@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Dr. Fry ProWave™ — Founding Batch · 30 Fryers</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --porcelain: #FAFAFA;
+    --porcelain-2: #F3F4F6;
+    --graphite: #111315;
+    --slate-800: #1F2937;
+    --warm-200: #E5E7EB;
+    --warm-500: #6B7280;
+    --amber: #F2A23A;
+    --amber-deep: #B45309;
+    --red: #C0392B;
+    --teal: #1BAA8F;
+    --navy: #0B1F3B;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: var(--porcelain);
+    color: var(--graphite);
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  html { overflow-x: clip; }
+  body { min-height: 100vh; overflow-x: clip; }
+  .serif { font-family: 'DM Serif Display', serif; font-weight: 400; }
+  .mono { font-family: 'IBM Plex Mono', monospace; }
+  ::selection { background: var(--amber); color: var(--graphite); }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: var(--porcelain-2); }
+  ::-webkit-scrollbar-thumb { background: var(--warm-500); }
+  ::-webkit-scrollbar-thumb:hover { background: var(--graphite); }
+
+  a, button, input, select, textarea, [role="button"] { font-family: inherit; }
+  a, button, [role="button"] { cursor: pointer; }
+  a { transition: color .2s ease, opacity .2s ease; }
+
+  .ds-btn {
+    transition: transform .18s ease, background-color .2s ease, box-shadow .2s ease, color .2s ease;
+    will-change: transform; border: none;
+  }
+  .ds-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 12px 26px rgba(17,19,21,0.20); }
+  .ds-btn:active:not(:disabled) { transform: translateY(0); box-shadow: 0 4px 12px rgba(17,19,21,0.16); }
+  .ds-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  a:focus-visible, button:focus-visible, input:focus-visible,
+  select:focus-visible, textarea:focus-visible, [tabindex]:focus-visible {
+    outline: 2px solid var(--amber); outline-offset: 3px; border-radius: 1px;
+  }
+
+  .field {
+    width: 100%; background: var(--porcelain); border: 1px solid var(--warm-200);
+    padding: 14px 16px; font-size: 15px; color: var(--graphite);
+    transition: border-color .2s ease, box-shadow .2s ease; border-radius: 0;
+  }
+  .field::placeholder { color: var(--warm-500); }
+  .field:focus { outline: none; border-color: var(--graphite); box-shadow: 0 0 0 3px rgba(242,162,58,0.18); }
+  .field.invalid { border-color: var(--red); box-shadow: 0 0 0 3px rgba(192,57,43,0.12); }
+  .field-label {
+    display:block; font-family:'IBM Plex Mono', monospace; font-size: 10px;
+    letter-spacing: 0.14em; text-transform: uppercase; color: var(--warm-500);
+    margin-bottom: 8px;
+  }
+
+  .seat-toggle {
+    flex: 1; padding: 14px 0; text-align:center; border: 1px solid var(--warm-200);
+    background: var(--porcelain); font-family:'IBM Plex Mono', monospace; font-size: 14px;
+    transition: all .18s ease; cursor: pointer; color: var(--slate-800);
+  }
+  .seat-toggle:hover { border-color: var(--graphite); }
+  .seat-toggle.active { background: var(--graphite); color: var(--porcelain); border-color: var(--graphite); }
+
+  .step-card { transition: transform .2s ease, box-shadow .2s ease; }
+
+  @media (max-width: 900px) {
+    .ds-grid-2 { grid-template-columns: 1fr !important; }
+    .ds-grid-3 { grid-template-columns: 1fr !important; }
+    .ds-grid-4 { grid-template-columns: 1fr 1fr !important; }
+    .nav-links { display: none !important; }
+    h1.hero-h { font-size: 52px !important; }
+    .split-pad { padding: 40px 24px !important; }
+  }
+  @media (max-width: 560px) {
+    .ds-grid-4 { grid-template-columns: 1fr !important; }
+    h1.hero-h { font-size: 38px !important; }
+    .wrap { padding-left: 20px !important; padding-right: 20px !important; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: .01ms !important; animation-iteration-count: 1 !important;
+      transition-duration: .01ms !important; scroll-behavior: auto !important;
+    }
+  }
+</style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="japan-strip.jsx"></script>
+  <script type="text/babel" src="investor.jsx"></script>
+</body>
+</html>

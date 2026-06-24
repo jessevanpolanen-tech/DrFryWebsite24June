@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Dr. Fry ProWave™ — Molecular Prevention for Commercial Frying</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --porcelain: #FAFAFA;
+    --porcelain-2: #F3F4F6;
+    --graphite: #111315;
+    --slate-800: #1F2937;
+    --warm-200: #E5E7EB;
+    --warm-500: #6B7280;
+    --amber: #F2A23A;
+    --amber-deep: #B45309;
+    --red: #C0392B;
+    --teal: #1BAA8F;
+    --navy: #0B1F3B;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: var(--porcelain);
+    color: var(--graphite);
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  html { overflow-x: clip; }
+  body { min-height: 100vh; overflow-x: clip; }
+  .serif { font-family: 'DM Serif Display', serif; font-weight: 400; }
+  .mono { font-family: 'IBM Plex Mono', monospace; }
+  /* Selection */
+  ::selection { background: var(--amber); color: var(--graphite); }
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: var(--porcelain-2); }
+  ::-webkit-scrollbar-thumb { background: var(--warm-500); border-radius: 0; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--graphite); }
+
+  /* App root mount */
+  #root { position: relative; }
+
+  /* ───────────────────────────────────────────────────────────────
+     UI/UX Pro Max — pre-delivery checklist applied
+     ─────────────────────────────────────────────────────────────── */
+
+  /* Interactive affordances: cursor + smooth transitions (150–300ms) */
+  a, button, input[type="range"], [role="button"] { cursor: pointer; }
+  a { transition: color .2s ease, opacity .2s ease; }
+
+  /* Nav link hover */
+  .ds-navlink:hover { color: var(--amber-deep); }
+
+  /* CTA buttons: lift on hover, settle on press */
+  .ds-btn {
+    transition: transform .18s ease, background-color .2s ease, box-shadow .2s ease, color .2s ease;
+    will-change: transform;
+  }
+  .ds-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 26px rgba(17,19,21,0.20); }
+  .ds-btn:active { transform: translateY(0); box-shadow: 0 4px 12px rgba(17,19,21,0.16); }
+
+  /* Visible focus for keyboard navigation */
+  a:focus-visible, button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
+    outline: 2px solid var(--amber);
+    outline-offset: 3px;
+    border-radius: 1px;
+  }
+
+  /* Range slider thumbs (ROI calculator) */
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 16px; height: 16px; border-radius: 50%;
+    background: var(--graphite); cursor: grab; border: 2px solid var(--porcelain);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+    transition: transform .15s ease, background-color .2s ease;
+  }
+  input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.18); background: var(--amber-deep); }
+  input[type="range"]:active::-webkit-slider-thumb { cursor: grabbing; }
+  input[type="range"]::-moz-range-thumb {
+    width: 16px; height: 16px; border-radius: 50%;
+    background: var(--graphite); cursor: grab; border: 2px solid var(--porcelain);
+  }
+
+  /* ── Responsive: 1440 / 1024 / 768 / 375 ── */
+  @media (max-width: 900px) {
+    .ds-nav-links { display: none !important; }
+    .ds-grid-2 { grid-template-columns: 1fr !important; }
+    .ds-grid-3 { grid-template-columns: 1fr 1fr !important; }
+    .ds-grid-4 { grid-template-columns: 1fr 1fr !important; }
+    .ds-metric-row { grid-template-columns: 1fr !important; gap: 14px !important; }
+    .ds-grid-2 > div { border-right: none !important; }
+    section h2.serif { font-size: 40px !important; }
+  }
+  @media (max-width: 560px) {
+    .ds-grid-3, .ds-grid-4, .ds-grid-4-collapse { grid-template-columns: 1fr !important; }
+    section h2.serif { font-size: 32px !important; }
+    section { padding-left: 4px !important; padding-right: 4px !important; }
+  }
+
+  /* Respect reduced-motion: kill keyframe loops + snap transitions */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: .01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: .01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+</style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <!-- React + Babel -->
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="tweaks-panel.jsx"></script>
+  <script type="text/babel" src="schematic-panel.jsx"></script>
+  <script type="text/babel" src="japan-strip.jsx"></script>
+  <script type="text/babel" src="drfry-hero.jsx"></script>
+  <script type="text/babel" src="sections.jsx"></script>
+  <script type="text/babel" src="app.jsx"></script>
+
+  <script type="application/json" id="__bundler_thumbnail_data">{}</script>
+  <template id="__bundler_thumbnail">
+    <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+      <rect width="200" height="200" fill="#FAFAFA"/>
+      <g transform="translate(100,100)">
+        <circle r="6" fill="#F2A23A"/>
+        <circle r="22" fill="none" stroke="#F2A23A" stroke-width="1.2"/>
+        <circle r="40" fill="none" stroke="#F2A23A" stroke-width="1" opacity="0.7"/>
+        <circle r="58" fill="none" stroke="#F2A23A" stroke-width="1" opacity="0.5"/>
+        <circle r="76" fill="none" stroke="#F2A23A" stroke-width="1" opacity="0.3"/>
+      </g>
+      <text x="100" y="180" text-anchor="middle" font-family="serif" font-size="14" fill="#111315">Dr. Fry ProWave™</text>
+    </svg>
+  </template>
+</body>
+</html>

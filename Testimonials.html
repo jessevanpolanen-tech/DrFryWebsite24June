@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Dr. Fry ProWave™ — Testimonials</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --porcelain: #FAFAFA;
+    --porcelain-2: #F3F4F6;
+    --graphite: #111315;
+    --slate-800: #1F2937;
+    --warm-200: #E5E7EB;
+    --warm-500: #6B7280;
+    --amber: #F2A23A;
+    --amber-deep: #B45309;
+    --red: #C0392B;
+    --teal: #1BAA8F;
+    --navy: #0B1F3B;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: var(--porcelain);
+    color: var(--graphite);
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  html { overflow-x: clip; }
+  body { min-height: 100vh; overflow-x: clip; }
+  .serif { font-family: 'DM Serif Display', serif; font-weight: 400; }
+  .mono { font-family: 'IBM Plex Mono', monospace; }
+  ::selection { background: var(--amber); color: var(--graphite); }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: var(--porcelain-2); }
+  ::-webkit-scrollbar-thumb { background: var(--warm-500); border-radius: 0; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--graphite); }
+  #root { position: relative; }
+
+  a, button, [role="button"] { cursor: pointer; }
+  a { transition: color .2s ease, opacity .2s ease; }
+  .ds-navlink:hover { color: var(--amber-deep); }
+  .ds-btn {
+    transition: transform .18s ease, background-color .2s ease, box-shadow .2s ease, color .2s ease;
+    will-change: transform;
+  }
+  .ds-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 26px rgba(17,19,21,0.20); }
+  .ds-btn:active { transform: translateY(0); box-shadow: 0 4px 12px rgba(17,19,21,0.16); }
+  a:focus-visible, button:focus-visible, [tabindex]:focus-visible {
+    outline: 2px solid var(--amber); outline-offset: 3px; border-radius: 1px;
+  }
+
+  @media (max-width: 900px) {
+    .ds-nav-links { display: none !important; }
+    .ds-feature { grid-template-columns: 1fr !important; gap: 28px !important; }
+    .ds-feature-meta { border-left: none !important; padding-left: 0 !important; border-top: 1px solid #2a2d31; padding-top: 24px !important; }
+  }
+  @media (max-width: 720px) {
+    .ds-ts-grid { grid-template-columns: 1fr !important; }
+    .ds-stat-strip { grid-template-columns: 1fr 1fr 1fr !important; gap: 14px !important; }
+  }
+  @media (max-width: 560px) {
+    section h1.serif { font-size: 34px !important; }
+    .ds-feature { padding: 32px 24px !important; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: .01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: .01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+</style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="japan-strip.jsx"></script>
+  <script type="text/babel" src="testimonials.jsx"></script>
+
+  <script type="application/json" id="__bundler_thumbnail_data">{}</script>
+  <template id="__bundler_thumbnail">
+    <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+      <rect width="200" height="200" fill="#FAFAFA"/>
+      <g transform="translate(100,100)">
+        <path d="M-44 18V-2C-44 -20 -32 -30 -10 -33l3 11c-13 2-20 9-20 19h17v21H-44zm52 0V-2C8 -20 20 -30 42 -33l3 11c-13 2-20 9-20 19h17v21H8z" fill="#F2A23A"/>
+      </g>
+      <text x="100" y="182" text-anchor="middle" font-family="serif" font-size="14" fill="#111315">Dr. Fry — Voices</text>
+    </svg>
+  </template>
+</body>
+</html>
