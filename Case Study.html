@@ -244,6 +244,26 @@
         body.appendChild(tpl.content.cloneNode(true));
       }
 
+      function triggerDownload() {
+        var filename = 'Dr_Fry_SevenEleven_Case_Study.pdf';
+        // Fetch into a blob so the download works regardless of how the page is
+        // served (preview, share link, bundled export) — a relative <a download>
+        // can fail cross-origin and the browser reports the file as missing.
+        fetch(DOC).then(function (r) {
+          if (!r.ok) throw new Error('http ' + r.status);
+          return r.blob();
+        }).then(function (blob) {
+          var url = URL.createObjectURL(blob);
+          var a = document.createElement('a');
+          a.href = url; a.download = filename;
+          document.body.appendChild(a); a.click(); a.remove();
+          setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+        }).catch(function () {
+          // Last-resort fallback: open in a new tab.
+          window.open(DOC, '_blank');
+        });
+      }
+
       form.addEventListener('submit', function (ev) {
         ev.preventDefault();
         var name = nameEl.value.trim();
@@ -256,10 +276,10 @@
 
         saveLead(name, email, company);
         showSuccess();
-        // Auto-trigger the download (same-origin; avoids a token-gated new tab).
-        var a = document.createElement('a');
-        a.href = DOC; a.download = 'Dr_Fry_SevenEleven_Case_Study.pdf';
-        document.body.appendChild(a); a.click(); a.remove();
+        triggerDownload();
+        // Wire the success-state "open again" button to the same blob path.
+        var again = document.getElementById('open-again');
+        if (again) again.addEventListener('click', function (e) { e.preventDefault(); triggerDownload(); });
       });
     })();
   </script>

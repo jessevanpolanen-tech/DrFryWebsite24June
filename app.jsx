@@ -427,20 +427,104 @@ function LaunchFilm() {
 }
 
 // ─────────────────────────────────────────────────────────────────
+// Mobile detection + a clean, static mobile hero (the desktop hero's
+// scroll-driven edge-panel choreography collapses on narrow screens).
+// ─────────────────────────────────────────────────────────────────
+
+function useIsMobile(bp = 760) {
+  const [m, setM] = useState(typeof window !== 'undefined' ? window.innerWidth <= bp : false);
+  useEffect(() => {
+    const f = () => setM(window.innerWidth <= bp);
+    window.addEventListener('resize', f);
+    return () => window.removeEventListener('resize', f);
+  }, [bp]);
+  return m;
+}
+
+function HeroMobile({ tweaks }) {
+  return (
+    <section id="hero-section" style={{
+      position: 'relative', minHeight: '100vh',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      overflow: 'hidden', background: 'var(--porcelain)',
+      padding: '124px 22px 92px',
+    }}>
+      {/* amber field glow */}
+      <div style={{ position:'absolute', inset:0, pointerEvents:'none',
+        background:'radial-gradient(ellipse 92% 46% at 50% 42%, rgba(242,162,58,0.12) 0%, transparent 70%)' }}/>
+
+      {/* faint flanking schematic panels — ambient technical frame */}
+      <div style={{ position:'absolute', left:-108, top:'50%', marginTop:-150, opacity:0.13, pointerEvents:'none',
+        transform:'perspective(1200px) rotateY(58deg)', transformOrigin:'center', filter:'drop-shadow(0 18px 24px rgba(17,19,21,0.10))' }}>
+        <SchematicPanel side="left" height={300} />
+      </div>
+      <div style={{ position:'absolute', right:-108, top:'50%', marginTop:-150, opacity:0.13, pointerEvents:'none',
+        transform:'perspective(1200px) rotateY(-58deg)', transformOrigin:'center', filter:'drop-shadow(0 18px 24px rgba(17,19,21,0.10))' }}>
+        <SchematicPanel side="right" height={300} />
+      </div>
+
+      {/* field dots */}
+      {tweaks.showFieldDots && (
+        <div style={{ position:'absolute', left:0, right:0, top:'24%', height:'42%', opacity:0.45, pointerEvents:'none' }}>
+          <FieldDots intensity={tweaks.fieldIntensity} drive={1} />
+        </div>
+      )}
+
+      {/* copy */}
+      <div style={{ position:'relative', textAlign:'center', maxWidth:520, width:'100%' }}>
+        <div className="mono" style={{ fontSize:10.5, letterSpacing:'0.2em', color:'var(--amber-deep)',
+          marginBottom:20, textTransform:'uppercase', display:'inline-flex', alignItems:'center', gap:9,
+          flexWrap:'wrap', justifyContent:'center' }}>
+          <svg width="9" height="9" viewBox="0 0 10 10" aria-hidden="true" style={{ flexShrink:0 }}>
+            <rect x="5" y="0" width="7.07" height="7.07" transform="rotate(45 5 0)" fill="var(--amber)"/>
+          </svg>
+          Engineered in Japan · Calibrated in Europe
+        </div>
+        <h1 className="serif" style={{ fontSize:'clamp(40px, 13vw, 60px)', lineHeight:1.02, letterSpacing:'-0.02em', marginBottom:20 }}>
+          {tweaks.headlineVariant}
+        </h1>
+        <p style={{ fontSize:16.5, lineHeight:1.55, color:'var(--slate-800)', maxWidth:420, margin:'0 auto 32px' }}>
+          {tweaks.subVariant}
+        </p>
+        <img src="assets/photo-counter.jpg" alt="Dr. Fry control unit and four electrode panels on a stainless counter"
+          style={{ width:'100%', maxWidth:460, height:'auto', display:'block', margin:'0 auto 34px', border:'1px solid var(--warm-200)' }} />
+        <div style={{ display:'flex', flexDirection:'column', gap:6, alignItems:'center' }}>
+          <a href="#technology" className="mono" style={{ fontSize:10.5, letterSpacing:'0.2em', color:'var(--warm-500)', textDecoration:'none' }}>SCROLL TO EXPLORE</a>
+          {[1,2,3].map(i => (
+            <div key={i} style={{ width:16, height:1, background:'var(--graphite)', opacity:0.6 - i*0.16,
+              animation:`scrollHint 1.6s ${i*0.15}s ease-in-out infinite` }}/>
+          ))}
+        </div>
+      </div>
+
+      <style>{`
+        @keyframes fieldPulse { 0%,100%{opacity:0;transform:translate(-50%,-50%) scale(0.4);} 50%{opacity:0.8;transform:translate(-50%,-50%) scale(1);} }
+        @keyframes scrollHint { 0%,100%{opacity:0.2;transform:translateY(0);} 50%{opacity:0.9;transform:translateY(2px);} }
+      `}</style>
+    </section>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────
 // App
 // ─────────────────────────────────────────────────────────────────
 
 function App() {
   const [tweaks, setTweak] = useTweaks(TWEAK_DEFAULTS);
+  const isMobile = useIsMobile(760);
 
   return (
     <>
       <TopNav />
 
-      {/* Hero: tall section with sticky inner stage */}
-      <section id="hero-section" style={{ height: '260vh', position: 'relative' }}>
-        <HeroStage tweaks={tweaks} />
-      </section>
+      {/* Hero: desktop = tall sticky scroll choreography; mobile = static */}
+      {isMobile ? (
+        <HeroMobile tweaks={tweaks} />
+      ) : (
+        <section id="hero-section" style={{ height: '260vh', position: 'relative' }}>
+          <HeroStage tweaks={tweaks} />
+        </section>
+      )}
 
       <LaunchFilm />
       <Mechanism />

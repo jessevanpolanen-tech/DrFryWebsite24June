@@ -5,15 +5,13 @@ const { useState, useEffect, useMemo, useRef } = React;
 // ─────────────────────────────────────────────────────────────────
 const ROUND = {
   totalSeats: 30,          // fryers in this founding batch (1 seat = 1 fryer)
-  ticket: 4000,            // € per fryer
-  deposit: 2000,           // € due upfront to reserve
-  balance: 2000,           // € due after install
+  ticket: 4500,            // € per fryer — full preorder, paid in full upfront
   maxSeatsPerInvestor: 4,
   batchUnits: 30,          // 1 fryer per seat — one batch from Japan
   exWorksPerUnit: 1167,    // € factory cost per unit
   deployedValuePerUnit: 4200,
   listPrice: 5900,         // € list price per unit, after the founder programme
-  founderPrice: 4000,      // € Founding Partner price per unit
+  founderPrice: 4500,      // € Founding Partner price per unit
   rentMonthly: 199,        // € / month rental — cash positive from month one
   closeDate: '31 AUG 2026',
 };
@@ -72,14 +70,14 @@ function Nav() {
       <Logo />
       <div className="nav-links" style={{ display:'flex', gap: 30, alignItems:'center', fontSize: 13 }}>
         <a href="#how" style={{ color:'var(--slate-800)', textDecoration:'none', fontWeight:500 }}>How it works</a>
-        <a href="#allocation" style={{ color:'var(--slate-800)', textDecoration:'none', fontWeight:500 }}>Allocation</a>
+        <a href="#allocation" style={{ color:'var(--slate-800)', textDecoration:'none', fontWeight:500 }}>The batch</a>
         <a href="Dashboard.html" style={{ color:'var(--slate-800)', textDecoration:'none', fontWeight:500 }}>Dashboard</a>
         <a href="index.html" style={{ color:'var(--warm-500)', textDecoration:'none', fontWeight:500 }}>← The product</a>
       </div>
       <a href="#commit" className="ds-btn" style={{
         background:'var(--graphite)', color:'var(--porcelain)', padding:'10px 18px',
         textDecoration:'none', fontSize:12, fontWeight:500, letterSpacing:'0.06em'
-      }}>RESERVE A FRYER →</a>
+      }} className="preorder-glow">PREORDER A FRYER →</a>
     </nav>
   );
 }
@@ -110,15 +108,15 @@ function Hero({ committedSeats }) {
         </h1>
         <p style={{ fontSize: 19, lineHeight: 1.55, color:'var(--slate-800)', maxWidth: 600, marginBottom: 44 }}>
           We are opening a single founding batch of <strong>{ROUND.totalSeats} fryers</strong> at <strong>{eur(ROUND.ticket)}</strong> each —
-          <strong>{eur(ROUND.deposit)}</strong> to reserve, <strong>{eur(ROUND.balance)}</strong> due once it's installed.
-          When the batch fills, the pooled deposits place one factory order of <strong>{ROUND.batchUnits} ProWave™ units</strong> ex-works in Japan,
-          installed into your kitchen. Founding customers benefit from reduced oil costs, with savings proportional to their oil usage.
+          a one-time preorder, <strong>paid in full upfront</strong>.
+          When the batch fills, the pooled preorders secure one production run of <strong>{ROUND.batchUnits} ProWave™ units</strong> with the manufacturer in Japan,
+          built and installed into your kitchen. Founding customers benefit from reduced oil costs, with savings proportional to their oil usage.
         </p>
         <div style={{ display:'flex', gap: 16, flexWrap:'wrap', alignItems:'center' }}>
-          <a href="#commit" className="ds-btn" style={{
+          <a href="#commit" className="ds-btn preorder-glow" style={{
             background:'var(--amber)', color:'var(--graphite)', padding:'17px 30px',
             textDecoration:'none', fontSize:14, fontWeight:600, letterSpacing:'0.05em'
-          }}>RESERVE A FRYER →</a>
+          }}>PREORDER A FRYER →</a>
           <a href="#how" className="ds-btn" style={{
             background:'transparent', color:'var(--graphite)', padding:'17px 24px',
             textDecoration:'none', fontSize:14, fontWeight:500, border:'1px solid var(--graphite)'
@@ -143,10 +141,10 @@ function SeatsBar({ committedSeats }) {
       <div className="wrap" style={{ maxWidth: 1080, margin:'0 auto', padding:'0 40px' }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', marginBottom: 18, flexWrap:'wrap', gap: 16 }}>
           <div>
-            <div className="mono" style={{ fontSize: 10, letterSpacing:'0.18em', color:'var(--warm-500)', marginBottom: 10 }}>BATCH RESERVATIONS · LIVE</div>
+            <div className="mono" style={{ fontSize: 10, letterSpacing:'0.18em', color:'var(--warm-500)', marginBottom: 10 }}>BATCH PREORDERS · LIVE</div>
             <div style={{ display:'flex', alignItems:'baseline', gap: 14 }}>
               <span className="serif" style={{ fontSize: 64, lineHeight: 1 }}>{committedSeats}</span>
-              <span className="mono" style={{ fontSize: 14, color:'var(--warm-500)' }}>/ {ROUND.totalSeats} fryers reserved</span>
+              <span className="mono" style={{ fontSize: 14, color:'var(--warm-500)' }}>/ {ROUND.totalSeats} fryers preordered</span>
             </div>
           </div>
           <div style={{ textAlign:'right' }}>
@@ -175,20 +173,20 @@ function SeatsBar({ committedSeats }) {
 // ─────────────────────────────────────────────────────────────────
 function HowItWorks() {
   const steps = [
-    { n:'01', t:'Reserve your fryer', d:`Reserve 1–${ROUND.maxSeatsPerInvestor} fryers at ${eur(ROUND.ticket)} each. A ${eur(ROUND.deposit)} deposit per fryer is due upfront to secure your place in the batch.` },
-    { n:'02', t:`The batch closes at ${ROUND.totalSeats}`, d:`Once all ${ROUND.totalSeats} fryers are spoken for (or on ${ROUND.closeDate}), the order locks and goes to the manufacturer.` },
-    { n:'03', t:'One batch, placed in Japan', d:`The pooled deposits place a single ex-works order for ${ROUND.batchUnits} ProWave™ units with the manufacturer in Japan.` },
-    { n:'04', t:'Install, then balance due', d:`Each fryer is installed in your kitchen. The ${eur(ROUND.balance)} balance is due once it's running — and the oil it saves covers it from month one.` },
+    { n:'01', t:'Preorder your fryer', d:`Preorder 1–${ROUND.maxSeatsPerInvestor} fryers at ${eur(ROUND.ticket)} each, paid in full upfront to secure your place in the batch.` },
+    { n:'02', t:`The batch closes at ${ROUND.totalSeats}`, d:`Once all ${ROUND.totalSeats} fryers are spoken for (or on ${ROUND.closeDate}), the batch locks and the production run is scheduled with the manufacturer.` },
+    { n:'03', t:'One batch, built in Japan', d:`The pooled preorders secure a single production run of ${ROUND.batchUnits} ProWave™ units with the manufacturer in Japan.` },
+    { n:'04', t:'Built, shipped & installed', d:`Each fryer is built, shipped from Japan, and installed in your kitchen — and the oil it saves covers its cost from month one.` },
   ];
   return (
     <section id="how" style={{ padding:'120px 0' }}>
       <div className="wrap" style={{ maxWidth: 1080, margin:'0 auto', padding:'0 40px' }}>
         <Eyebrow>How the batch works</Eyebrow>
         <h2 className="serif" style={{ fontSize: 'clamp(36px, 5vw, 56px)', lineHeight: 1.05, letterSpacing:'-0.01em', marginBottom: 14, maxWidth: 720 }}>
-          A deposit, a batch, a fryer.
+          A preorder, a batch, a fryer.
         </h2>
         <p style={{ fontSize: 17, lineHeight: 1.55, color:'var(--slate-800)', maxWidth: 560, marginBottom: 64 }}>
-          The structure is deliberately simple. No subscriptions, no hidden fees — {eur(ROUND.deposit)} to reserve, {eur(ROUND.balance)} once your fryer is installed.
+          The structure is deliberately simple. No subscriptions, no hidden fees — {eur(ROUND.ticket)} per fryer, paid in full when you preorder.
         </p>
         <div className="ds-grid-4" style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap: 0, borderTop:'1px solid var(--graphite)' }}>
           {steps.map((s, i) => (
@@ -219,7 +217,7 @@ function Allocation() {
   return (
     <section id="allocation" style={{ padding:'120px 0', background:'var(--porcelain-2)' }}>
       <div className="wrap" style={{ maxWidth: 1080, margin:'0 auto', padding:'0 40px' }}>
-        <Eyebrow>Where deposits go</Eyebrow>
+        <Eyebrow>Where preorders go</Eyebrow>
         <h2 className="serif" style={{ fontSize:'clamp(36px, 5vw, 56px)', lineHeight:1.05, letterSpacing:'-0.01em', marginBottom: 56, maxWidth: 760 }}>
           Where the {eur(POOL_TOTAL)} goes.
         </h2>
@@ -255,8 +253,8 @@ function Allocation() {
             <div className="mono" style={{ fontSize:10, letterSpacing:'0.15em', color:'var(--warm-500)', marginBottom: 30 }}>PER FOUNDER · PER FRYER</div>
             {[
               { k: eur(ROUND.ticket), l: 'Price per fryer' },
-              { k: eur(ROUND.deposit), l: 'Deposit due upfront' },
-              { k: eur(ROUND.balance), l: 'Balance due on install' },
+              { k: 'In full', l: 'Paid upfront on preorder' },
+              { k: eur(ROUND.listPrice), l: 'List price after programme' },
               { k: '1 / ' + ROUND.totalSeats, l: 'Share of the founding batch' },
             ].map((f, i) => (
               <div key={i} style={{ paddingBottom: 22, marginBottom: 22, borderBottom: i < 3 ? '1px solid #2a2d31' : 'none' }}>
@@ -326,13 +324,13 @@ function CommitForm({ onCommit, committedSeats }) {
             <path d="M15 24.5 L21 30.5 L33 17.5" fill="none" stroke="var(--graphite)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </div>
-        <h3 className="serif" style={{ fontSize: 34, lineHeight: 1.1, marginBottom: 14 }}>Fryer reserved.</h3>
+        <h3 className="serif" style={{ fontSize: 34, lineHeight: 1.1, marginBottom: 14 }}>Fryer preordered.</h3>
         <p style={{ fontSize: 16, lineHeight:1.55, color:'var(--slate-800)', maxWidth: 460, margin:'0 auto 8px' }}>
-          We've recorded your reservation for <strong>{seats} fryer{seats>1?'s':''}</strong> ({eur(seats*ROUND.ticket)} total).
-          Our team will email <strong>{form.email}</strong> with your order confirmation and {eur(seats*ROUND.deposit)} deposit details within two business days.
+          We've recorded your preorder for <strong>{seats} fryer{seats>1?'s':''}</strong> ({eur(seats*ROUND.ticket)} total).
+          Our team will email <strong>{form.email}</strong> with your order confirmation and payment details within two business days.
         </p>
         <p className="mono" style={{ fontSize: 11, color:'var(--warm-500)', letterSpacing:'0.1em', marginTop: 18 }}>
-          {eur(ROUND.deposit)} DEPOSIT PER FRYER · {eur(ROUND.balance)} BALANCE DUE ON INSTALL
+          {eur(ROUND.ticket)} PER FRYER · PAID IN FULL ON PREORDER
         </p>
       </div>
     );
@@ -356,12 +354,8 @@ function CommitForm({ onCommit, committedSeats }) {
           <span className="mono" style={{ fontSize: 11, color:'var(--warm-500)', letterSpacing:'0.08em' }}>{remaining} fryers remaining</span>
           <div style={{ display:'flex', gap: 24, textAlign:'right' }}>
             <span>
-              <span className="mono" style={{ display:'block', fontSize: 10, color:'var(--warm-500)', letterSpacing:'0.08em', marginBottom: 2 }}>DUE NOW</span>
-              <span className="serif" style={{ fontSize: 30 }}>{eur(seats*ROUND.deposit)}</span>
-            </span>
-            <span>
-              <span className="mono" style={{ display:'block', fontSize: 10, color:'var(--warm-500)', letterSpacing:'0.08em', marginBottom: 2 }}>ON INSTALL</span>
-              <span className="serif" style={{ fontSize: 30, color:'var(--warm-500)' }}>{eur(seats*ROUND.balance)}</span>
+              <span className="mono" style={{ display:'block', fontSize: 10, color:'var(--warm-500)', letterSpacing:'0.08em', marginBottom: 2 }}>DUE NOW · IN FULL</span>
+              <span className="serif" style={{ fontSize: 30 }}>{eur(seats*ROUND.ticket)}</span>
             </span>
           </div>
         </div>
@@ -398,17 +392,17 @@ function CommitForm({ onCommit, committedSeats }) {
         </div>
         {(errors.name || errors.email) && (
           <div className="mono" style={{ fontSize: 11, color:'var(--red)', letterSpacing:'0.06em', marginBottom: 18 }}>
-            ◆ PLEASE ENTER A VALID NAME AND EMAIL TO RESERVE YOUR FRYER.
+            ◆ PLEASE ENTER A VALID NAME AND EMAIL TO PREORDER YOUR FRYER.
           </div>
         )}
         <button type="submit" className="ds-btn" style={{
           width:'100%', background:'var(--amber)', color:'var(--graphite)',
           padding:'18px', fontSize: 14, fontWeight: 600, letterSpacing:'0.06em'
         }}>
-          RESERVE {seats} FRYER{seats>1?'S':''} · {eur(seats*ROUND.deposit)} DUE NOW →
+          PREORDER {seats} FRYER{seats>1?'S':''} · {eur(seats*ROUND.ticket)} DUE NOW →
         </button>
         <p className="mono" style={{ fontSize: 10, color:'var(--warm-500)', lineHeight: 1.6, marginTop: 16, letterSpacing:'0.04em' }}>
-          Reserving secures your fryer in the batch. A {eur(ROUND.deposit)} deposit per fryer confirms your place; the {eur(ROUND.balance)} balance per fryer is due once it's installed and running.
+          Preordering secures your fryer in the batch. {eur(ROUND.ticket)} per fryer is paid in full upfront to confirm your place.
         </p>
       </div>
     </form>
@@ -425,14 +419,14 @@ function SeatMap({ committedSeats }) {
         <span className="mono" style={{ fontSize: 10, letterSpacing:'0.14em', color:'var(--warm-500)', textTransform:'uppercase' }}>Batch map · {total} fryers</span>
         <span className="mono" style={{ fontSize: 11, letterSpacing:'0.06em' }}>
           <span style={{ color:'var(--amber-deep)' }}>{committedSeats}</span>
-          <span style={{ color:'var(--warm-500)' }}> reserved · {open} open</span>
+          <span style={{ color:'var(--warm-500)' }}> preordered · {open} open</span>
         </span>
       </div>
       <div style={{ display:'grid', gridTemplateColumns:'repeat(20, 1fr)', gap: 4 }}>
         {cells.map((_, i) => {
           const taken = i < committedSeats;
           return (
-            <div key={i} title={taken ? `Seat ${i+1} · reserved` : `Seat ${i+1} · open`} style={{
+            <div key={i} title={taken ? `Seat ${i+1} · preordered` : `Seat ${i+1} · open`} style={{
               aspectRatio:'1 / 1', borderRadius: 2,
               background: taken ? 'var(--amber)' : 'var(--porcelain-2)',
               border: taken ? '1px solid var(--amber)' : '1px solid var(--warm-200)',
@@ -443,7 +437,7 @@ function SeatMap({ committedSeats }) {
       <div style={{ display:'flex', gap: 20, marginTop: 14 }}>
         <span style={{ display:'flex', alignItems:'center', gap: 7 }}>
           <span style={{ width: 11, height: 11, borderRadius: 2, background:'var(--amber)', display:'inline-block' }} />
-          <span className="mono" style={{ fontSize: 10, color:'var(--warm-500)', letterSpacing:'0.08em' }}>RESERVED</span>
+          <span className="mono" style={{ fontSize: 10, color:'var(--warm-500)', letterSpacing:'0.08em' }}>PREORDERED</span>
         </span>
         <span style={{ display:'flex', alignItems:'center', gap: 7 }}>
           <span style={{ width: 11, height: 11, borderRadius: 2, background:'var(--porcelain-2)', border:'1px solid var(--warm-200)', display:'inline-block' }} />
@@ -461,19 +455,19 @@ function CommitSection({ committedSeats, onCommit }) {
         {window.JapanStrip && <window.JapanStrip dark={false} />}
         <div className="ds-grid-2" style={{ display:'grid', gridTemplateColumns:'0.8fr 1.2fr', gap: 60, alignItems:'start' }}>
           <div>
-            <Eyebrow>Reserve & contact</Eyebrow>
+            <Eyebrow>Preorder & contact</Eyebrow>
             <h2 className="serif" style={{ fontSize:'clamp(34px, 4.6vw, 52px)', lineHeight:1.05, letterSpacing:'-0.01em', marginBottom: 22 }}>
               Take one of the {ROUND.totalSeats} seats.
             </h2>
             <p style={{ fontSize: 16, lineHeight: 1.6, color:'var(--slate-800)', marginBottom: 32 }}>
-              Reserve below and we'll send your order confirmation and deposit details. Prefer to talk first? Reach the founding team directly.
+              Preorder below and we'll send your order confirmation and payment details. Prefer to talk first? Reach the founding team directly.
             </p>
             <SeatMap committedSeats={committedSeats} />
             <div style={{ display:'flex', flexDirection:'column', gap: 18 }}>
               {[
-                { l:'Email', v:'founders@drfry.io', href:'mailto:founders@drfry.io' },
-                { l:'Direct', v:'+31 10 123 4567', href:'tel:+31101234567' },
-                { l:'Office', v:'Scheepvaartkwartier, Rotterdam (NL)', href:null },
+                { l:'Email', v:'jesse@drfry.nl', href:'mailto:jesse@drfry.nl' },
+                { l:'Direct', v:'+31 6 17020696', href:'tel:+31617020696' },
+                { l:'Office', v:'Monster, Netherlands', href:null },
               ].map((c, i) => (
                 <div key={i} style={{ borderTop:'1px solid var(--warm-200)', paddingTop: 14 }}>
                   <div className="mono" style={{ fontSize: 10, letterSpacing:'0.14em', color:'var(--warm-500)', textTransform:'uppercase', marginBottom: 6 }}>{c.l}</div>
@@ -579,6 +573,9 @@ function Footer() {
 // subscription counter and where the pooled money goes.
 // ─────────────────────────────────────────────────────────────────
 function smooth(t){ return t * t * (3 - 2 * t); }
+// easeInOutCubic — steeper mid-slope than smoothstep, so the camera visibly
+// ramps up in speed through the middle of each pan instead of gliding linearly.
+function ramp(t){ return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3) / 2; }
 function jclamp(v, a, b){ return Math.max(a, Math.min(b, v)); }
 function jlerp(a, b, t){ return a + (b - a) * t; }
 
@@ -588,29 +585,30 @@ function PoolJourney({ committedSeats }) {
   const sceneRefs = useRef([]);
   const railRef = useRef(null);
   const pctRef = useRef(null);
+  const prevCamRef = useRef(0);
+  const reduceRef = useRef(false);
 
   const committedCapital = committedSeats * ROUND.ticket;
   const seatPct = Math.min(100, (committedSeats / ROUND.totalSeats) * 100);
-  const unitsPerSeat = Math.round(ROUND.batchUnits / ROUND.totalSeats); // 3
-  const batch = ROUND.batchUnits * ROUND.exWorksPerUnit;
 
   const use = [
-    { tag:'01', label:`Batch — ${ROUND.batchUnits} units ex-works`, place:'Manufacturer · Japan', value: batch,
-      body:`The core purchase: one factory run of ${ROUND.batchUnits} ProWave™ units, paid ex-works to the manufacturer in Japan. This is the hardware the whole batch exists to acquire.` },
-    { tag:'02', label:'Freight, duties & EU certification', place:'Japan → Europe', value: 18000,
-      body:'Sea freight, import duties, and the CE conformity work that lets the batch deploy legally across the EU. Certification is in progress and partly funded here.' },
-    { tag:'03', label:'Installation & field deployment', place:'Kitchens across Europe', value: 27000,
-      body:'Surveying kitchens, mounting each unit inline on the fryer oil feed, calibration, and first-90-day support as fryers go live.' },
-    { tag:'04', label:'Working capital & reserve', place:'Held in reserve', value: POOL_TOTAL - batch - 18000 - 27000,
-      body:'A held buffer for warranty swaps, spares, and first-90-day support as fryers come online across the batch.' },
+    { tag:'01', big: eur(ROUND.ticket), label:'Your preorder, held in full', place:'Secured against your fryer',
+      body:`Your preorder reserves one of the ${ROUND.totalSeats} fryers in the founding batch — ${eur(ROUND.ticket)}, paid in full, holds your unit and your place in the run.` },
+    { tag:'02', big: `${ROUND.totalSeats} / ${ROUND.totalSeats}`, label:'The batch closes', place:'Order locks',
+      body:`Once all ${ROUND.totalSeats} fryers are spoken for — or on ${ROUND.closeDate} — the founding batch closes and the production order locks.` },
+    { tag:'03', big: '1 batch', label:'Built in Japan', place:'Manufacturer · Japan',
+      body:`A single production run of ${ROUND.batchUnits} ProWave™ units is placed with the manufacturer in Japan and built for the founding kitchens.` },
+    { tag:'04', big: '< 2h', label:'Installed & running', place:'Your kitchen',
+      body:'Each fryer is mounted inline on your oil feed, calibrated, and brought live — cash positive from the very first month.' },
   ];
-  let cum = 0;
-  const useWithCum = use.map(u => { cum += u.value; return { ...u, cum }; });
-  const scenes = [{ kind:'pool' }, { kind:'anchor' }, ...useWithCum.map(u => ({ kind:'use', ...u })), { kind:'return' }];
+  const scenes = [{ kind:'pool' }, { kind:'anchor' }, ...use.map(u => ({ kind:'use', ...u })), { kind:'return' }];
   const N = scenes.length;
 
   useEffect(() => {
+    reduceRef.current = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
     let raf = 0;
+    let settle = 0;
+    let forceCrisp = false;
     const update = () => {
       raf = 0;
       const sec = sectionRef.current; if (!sec) return;
@@ -618,25 +616,44 @@ function PoolJourney({ committedSeats }) {
       const total = Math.max(1, sec.offsetHeight - window.innerHeight);
       const p = jclamp((-rect.top) / total, 0, 1);
       const camRaw = p * (N - 1);
-      // Dwell mapping: hold each scene centered for the first ~55% of its
-      // segment, then pan to the next. Gives readable rest points + L→R motion.
+      // Dwell mapping: hold each scene centered for the first ~22% of its
+      // segment, then whip to the next with an accelerating (easeInOutCubic) pan.
       const idx = Math.min(N - 2, Math.floor(camRaw));
       const frac = jclamp(camRaw - idx, 0, 1);
-      const move = frac < 0.30 ? 0 : smooth((frac - 0.30) / 0.70);
+      const move = frac < 0.22 ? 0 : ramp((frac - 0.22) / 0.78);
       const cam = (camRaw >= N - 1) ? (N - 1) : (idx + move);
       const w = window.innerWidth;
-      if (trackRef.current) trackRef.current.style.transform = `translate3d(${(-cam * w).toFixed(1)}px,0,0)`;
+
+      // Camera velocity (scene-units / frame) drives a motion blur that peaks
+      // during the fast part of each pan and resolves to crisp at every rest point.
+      const vel = forceCrisp ? 0 : Math.abs(cam - prevCamRef.current);
+      prevCamRef.current = cam;
+      const blurPx = reduceRef.current ? 0 : Math.min(9, vel * 130);
+      const stretch = reduceRef.current ? 0 : Math.min(0.05, vel * 0.9);
+
+      if (trackRef.current) {
+        trackRef.current.style.transform = `translate3d(${(-cam * w).toFixed(1)}px,0,0)`;
+        trackRef.current.style.filter = blurPx > 0.2 ? `blur(${blurPx.toFixed(2)}px)` : 'none';
+      }
       sceneRefs.current.forEach((el, i) => {
         if (!el) return;
         const f = smooth(jclamp(1 - Math.abs(cam - i), 0, 1));
         el.style.opacity = f.toFixed(3);
-        el.style.transform = `translateY(${jlerp(34, 0, f).toFixed(1)}px) scale(${jlerp(0.6, 1, f).toFixed(4)})`;
+        const sc = jlerp(0.6, 1, f);
+        // horizontal stretch during motion reinforces the sense of speed
+        el.style.transform = `translateY(${jlerp(34, 0, f).toFixed(1)}px) scale(${(sc*(1+stretch)).toFixed(4)}, ${sc.toFixed(4)})`;
         el.style.pointerEvents = f > 0.6 ? 'auto' : 'none';
       });
       if (railRef.current) railRef.current.style.width = (p * 100).toFixed(2) + '%';
       if (pctRef.current) pctRef.current.textContent = String(Math.round(p * 100)).padStart(3, '0');
     };
-    const onScroll = () => { if (!raf) raf = requestAnimationFrame(update); };
+    const onScroll = () => {
+      if (!raf) raf = requestAnimationFrame(update);
+      // Once scrolling stops, re-render one crisp frame (vel forced to 0) so no
+      // residual blur / stretch lingers at the rest point.
+      clearTimeout(settle);
+      settle = setTimeout(() => { forceCrisp = true; update(); forceCrisp = false; }, 90);
+    };
     update();
     window.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('resize', onScroll);
@@ -644,7 +661,7 @@ function PoolJourney({ committedSeats }) {
     return () => {
       window.removeEventListener('scroll', onScroll);
       window.removeEventListener('resize', onScroll);
-      clearTimeout(t); if (raf) cancelAnimationFrame(raf);
+      clearTimeout(t); clearTimeout(settle); if (raf) cancelAnimationFrame(raf);
     };
   }, [N]);
 
@@ -652,10 +669,10 @@ function PoolJourney({ committedSeats }) {
     if (s.kind === 'pool') {
       return (
         <div>
-          <Eyebrow light>Batch reservations · Live</Eyebrow>
-          <div className="serif" style={{ fontSize:'clamp(64px,11vw,168px)', lineHeight:0.9, letterSpacing:'-0.02em' }}>{eur(POOL_TOTAL)}</div>
+          <Eyebrow light>Batch preorders · Live</Eyebrow>
+          <div className="serif" style={{ fontSize:'clamp(64px,11vw,168px)', lineHeight:0.9, letterSpacing:'-0.02em' }}>{ROUND.totalSeats}<span style={{ fontSize:'0.28em', letterSpacing:'0.02em', color:'var(--warm-500)', marginLeft:14 }}>fryers</span></div>
           <p style={{ fontSize:'clamp(16px,1.7vw,21px)', color:'var(--warm-500)', marginTop:18, maxWidth:660, lineHeight:1.5 }}>
-            One closed batch — <strong style={{ color:'var(--porcelain)' }}>{ROUND.totalSeats} fryers</strong> at <strong style={{ color:'var(--porcelain)' }}>{eur(ROUND.ticket)}</strong> each. {eur(ROUND.deposit)} reserves yours; {eur(ROUND.balance)} is due on install.
+            One founding batch — <strong style={{ color:'var(--porcelain)' }}>{ROUND.totalSeats} fryers</strong> at <strong style={{ color:'var(--porcelain)' }}>{eur(ROUND.ticket)}</strong> each, paid in full on preorder. Reserve yours before the batch closes.
           </p>
           <div style={{ marginTop:38, maxWidth:680 }}>
             <div style={{ height:12, background:'#23262a', position:'relative', overflow:'hidden' }}>
@@ -665,7 +682,7 @@ function PoolJourney({ committedSeats }) {
               ))}
             </div>
             <div className="mono" style={{ display:'flex', justifyContent:'space-between', marginTop:12, fontSize:12, color:'var(--warm-500)', letterSpacing:'0.06em' }}>
-              <span><span style={{ color:'var(--amber)' }}>{committedSeats}</span> / {ROUND.totalSeats} FRYERS · {eur(committedCapital)} RESERVED</span>
+              <span><span style={{ color:'var(--amber)' }}>{committedSeats}</span> / {ROUND.totalSeats} FRYERS PREORDERED</span>
               <span>CLOSES {ROUND.closeDate}</span>
             </div>
           </div>
@@ -688,7 +705,7 @@ function PoolJourney({ committedSeats }) {
           </div>
           <div>
             <p style={{ fontSize:'clamp(16px,1.7vw,21px)', lineHeight:1.6, color:'var(--porcelain)' }}>
-              One seat is one fryer. Founding customers take it at <strong style={{ color:'var(--amber)' }}>{eur(ROUND.founderPrice)}</strong> — below the <strong>{eur(ROUND.listPrice)}</strong> list it returns to once the programme closes — split <strong>{eur(ROUND.deposit)}</strong> upfront and <strong>{eur(ROUND.balance)}</strong> on install.
+              One seat is one fryer. Founding customers take it at <strong style={{ color:'var(--amber)' }}>{eur(ROUND.founderPrice)}</strong> — below the <strong>{eur(ROUND.listPrice)}</strong> list it returns to once the programme closes — paid in full at <strong>{eur(ROUND.ticket)}</strong> upfront.
             </p>
             <div className="mono" style={{ marginTop:24, fontSize:11, letterSpacing:'0.06em', color:'var(--warm-500)', lineHeight:1.7, borderLeft:'2px solid var(--amber)', paddingLeft:14 }}>
               ANCHOR · {eur(ROUND.listPrice)} is the published list price. The founding programme holds it at {eur(ROUND.founderPrice)} — and the oil saved covers it from the first month.
@@ -698,28 +715,22 @@ function PoolJourney({ committedSeats }) {
       );
     }
     if (s.kind === 'use') {
-      const sharePct = Math.round(s.value / POOL_TOTAL * 100);
+      const stepPct = Math.round(Number(s.tag) / use.length * 100);
       return (
         <div className="pj-cols">
           <div>
-            <div className="mono" style={{ fontSize:11, letterSpacing:'0.18em', color:'var(--amber)', marginBottom:18 }}>WHERE THE {eur(POOL_TOTAL)} GOES · {s.tag}</div>
-            <div className="serif" style={{ fontSize:'clamp(56px,9vw,124px)', lineHeight:0.85, letterSpacing:'-0.02em' }}>{eur(s.value)}</div>
+            <div className="mono" style={{ fontSize:11, letterSpacing:'0.18em', color:'var(--amber)', marginBottom:18 }}>YOUR PREORDER · STEP {s.tag} OF {String(use.length).padStart(2,'0')}</div>
+            <div className="serif" style={{ fontSize:'clamp(52px,8vw,110px)', lineHeight:0.85, letterSpacing:'-0.02em' }}>{s.big}</div>
             <div style={{ fontSize:'clamp(17px,1.9vw,24px)', marginTop:18, fontWeight:500 }}>{s.label}</div>
             <div className="mono" style={{ fontSize:11, letterSpacing:'0.1em', color:'var(--warm-500)', marginTop:8 }}>{s.place.toUpperCase()}</div>
           </div>
           <div>
             <p style={{ fontSize:'clamp(15px,1.6vw,19px)', lineHeight:1.65, color:'var(--porcelain)', marginBottom:30 }}>{s.body}</p>
             <div className="mono" style={{ display:'flex', justifyContent:'space-between', fontSize:10, letterSpacing:'0.12em', color:'var(--warm-500)', marginBottom:8 }}>
-              <span>SHARE OF POOL</span><span style={{ color:'var(--amber)' }}>{sharePct}%</span>
+              <span>JOURNEY</span><span style={{ color:'var(--amber)' }}>STEP {s.tag} / {String(use.length).padStart(2,'0')}</span>
             </div>
             <div style={{ height:8, background:'#23262a', position:'relative' }}>
-              <div style={{ position:'absolute', inset:'0 auto 0 0', width:`${s.value / POOL_TOTAL * 100}%`, background:'var(--amber)' }} />
-            </div>
-            <div className="mono" style={{ display:'flex', justifyContent:'space-between', fontSize:10, letterSpacing:'0.12em', color:'var(--warm-500)', marginTop:16 }}>
-              <span>RUNNING TOTAL</span><span style={{ color:'var(--porcelain)' }}>{eur(s.cum)} / {eur(POOL_TOTAL)}</span>
-            </div>
-            <div style={{ height:3, background:'#23262a', position:'relative', marginTop:6 }}>
-              <div style={{ position:'absolute', inset:'0 auto 0 0', width:`${s.cum / POOL_TOTAL * 100}%`, background:'var(--warm-500)' }} />
+              <div style={{ position:'absolute', inset:'0 auto 0 0', width:`${stepPct}%`, background:'var(--amber)', transition:'width .5s ease' }} />
             </div>
           </div>
         </div>
@@ -736,12 +747,12 @@ function PoolJourney({ committedSeats }) {
           </div>
           <div>
             <p style={{ fontSize:'clamp(16px,1.7vw,21px)', lineHeight:1.6, color:'var(--porcelain)' }}>
-              A fryer costs a kitchen <strong>{eur(ROUND.founderPrice)}</strong> to own — <strong>{eur(ROUND.deposit)}</strong> upfront, <strong>{eur(ROUND.balance)}</strong> once it's installed — and the oil it saves is worth more than that from the very first month. Every deployment runs <strong style={{ color:'var(--amber)' }}>cash positive from month one</strong>. Founding customers benefit from reduced oil costs, with savings proportional to their oil usage.
+              A fryer costs a kitchen <strong>{eur(ROUND.founderPrice)}</strong> to own — paid in full upfront — and the oil it saves is worth more than that from the very first month. Every deployment runs <strong style={{ color:'var(--amber)' }}>cash positive from month one</strong>. Founding customers benefit from reduced oil costs, with savings proportional to their oil usage.
             </p>
             <div className="mono" style={{ marginTop:24, fontSize:11, letterSpacing:'0.06em', color:'var(--warm-500)', lineHeight:1.7, borderLeft:'2px solid var(--amber)', paddingLeft:14 }}>
               HOW · ProWave arrests oil oxidation at the source. Kitchens buy less oil and bin less waste — and that recurring saving is what keeps every site cash positive.
             </div>
-            <a href="#commit" className="ds-btn" style={{ display:'inline-block', marginTop:30, background:'var(--amber)', color:'var(--graphite)', padding:'15px 26px', textDecoration:'none', fontSize:13, fontWeight:600, letterSpacing:'0.05em' }}>RESERVE A FRYER →</a>
+            <a href="#commit" className="ds-btn" style={{ display:'inline-block', marginTop:30, background:'var(--amber)', color:'var(--graphite)', padding:'15px 26px', textDecoration:'none', fontSize:13, fontWeight:600, letterSpacing:'0.05em' }}>PREORDER A FRYER →</a>
           </div>
         </div>
         <div className="mono" style={{ marginTop:34, fontSize:10, color:'var(--warm-500)', lineHeight:1.6, maxWidth:760 }}>
@@ -756,7 +767,7 @@ function PoolJourney({ committedSeats }) {
       <div style={{ position:'sticky', top:0, height:'100vh', overflow:'hidden' }}>
         {/* persistent header */}
         <div style={{ position:'absolute', top:0, left:0, right:0, padding:'94px 6vw 0', display:'flex', justifyContent:'space-between', zIndex:5, pointerEvents:'none' }}>
-          <div className="mono" style={{ fontSize:10, letterSpacing:'0.22em', color:'var(--warm-500)' }}>THE POOL, EXPLAINED</div>
+          <div className="mono" style={{ fontSize:10, letterSpacing:'0.22em', color:'var(--warm-500)' }}>THE FOUNDING BATCH</div>
           <div className="mono" style={{ fontSize:10, letterSpacing:'0.22em', color:'var(--warm-500)' }}>SCROLL · <span ref={pctRef}>000</span>%</div>
         </div>
 

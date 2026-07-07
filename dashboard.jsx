@@ -20,18 +20,285 @@ const eurShort = (n) => n >= 1000000 ? '€' + (n/1000000).toFixed(2) + 'M' : n 
 // No seeded / sample investors — the dashboard reflects the live book exactly.
 const SEED = [];
 
+// Cold outreach leads live in their own store — they never come through the public
+// reservation form, so the operator adds them by hand. Shape mirrors a commitment
+// but with zero seats and kind:'cold', so the seat / amount cells read '—'.
+const COLD_KEY = 'drfry_cold_leads_v1';
+function readColdLeads() {
+  try { return JSON.parse(localStorage.getItem(COLD_KEY) || '[]'); } catch { return []; }
+}
+function addColdLead(lead) {
+  const all = readColdLeads();
+  all.push(lead);
+  localStorage.setItem(COLD_KEY, JSON.stringify(all));
+  window.dispatchEvent(new Event('drfry-leads-changed'));
+}
+
 // Sent-history store — records when you last emailed each investor, so "Resend" is meaningful.
 const SENT_KEY = 'drfry_sent_v1';
 const keyFor = (c) => `${c.email}|${c.ts}`;
 function readSent() {
   try { return JSON.parse(localStorage.getItem(SENT_KEY) || '{}'); } catch { return {}; }
 }
-function recordSent(c) {
+function recordSent(c, mail) {
   const all = readSent();
   const k = keyFor(c);
-  all[k] = { at: Date.now(), count: (all[k]?.count || 0) + 1 };
+  const prev = all[k] || { count: 0, history: [] };
+  const entry = {
+    at: Date.now(),
+    subject: (mail && mail.subject) || '',
+    body: (mail && mail.body) || '',
+    template: (mail && mail.template) || '',
+  };
+  all[k] = {
+    at: entry.at,
+    count: (prev.count || 0) + 1,
+    history: [ ...(prev.history || []), entry ],
+  };
   try { localStorage.setItem(SENT_KEY, JSON.stringify(all)); } catch {}
   return all;
+}
+const fmtWhen = (ts) => new Date(ts).toLocaleString('en-GB', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+
+// Log of every email actually sent to this contact — subject, body & template,
+// kept in localStorage so the record survives reloads. Each row expands to the
+// exact message that went out.
+function SentLog({ history }) {
+  const [open, setOpen] = useState(null);
+  if (!history || !history.length) return null;
+  return (
+    <div style={{ marginBottom:20, paddingBottom:20, borderBottom:'1px solid var(--warm-200)' }}>
+      <div className="mono" style={{ fontSize:9, letterSpacing:'0.14em', textTransform:'uppercase', color:'var(--warm-500)', marginBottom:10 }}>
+        Sent history · {history.length} email{history.length>1?'s':''}
+      </div>
+      <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+        {history.map((_, i) => {
+          const idx = history.length - 1 - i;
+          const h = history[idx];
+          const isOpen = open === idx;
+          return (
+            <div key={idx} style={{ border:'1px solid var(--warm-200)', background:'var(--porcelain)' }}>
+              <button onClick={() => setOpen(isOpen ? null : idx)} style={{
+                width:'100%', textAlign:'left', display:'flex', alignItems:'center', gap:10,
+                padding:'10px 12px', background:'transparent', border:'none', cursor:'pointer',
+              }}>
+                <span style={{ width:6, height:6, borderRadius:'50%', background:'var(--teal)', flexShrink:0 }}/>
+                <span style={{ fontSize:13, fontWeight:500, flex:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{h.subject || '(no subject)'}</span>
+                {h.template && <span className="pill pill-grey" style={{ flexShrink:0 }}>{h.template}</span>}
+                <span className="mono" style={{ fontSize:11, color:'var(--warm-500)', flexShrink:0 }}>{fmtWhen(h.at)}</span>
+                <span className="mono" style={{ fontSize:11, color:'var(--warm-500)', flexShrink:0, width:12, textAlign:'center' }}>{isOpen ? '▾' : '▸'}</span>
+              </button>
+              {isOpen && (
+                <div style={{ padding:'2px 14px 14px 28px', borderTop:'1px solid var(--warm-200)' }}>
+                  <div className="mono" style={{ fontSize:12, whiteSpace:'pre-wrap', lineHeight:1.6, color:'var(--slate-800)' }}>{h.body}</div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Resend integration
+// ─────────────────────────────────────────────────────────────────
+// The browser can't safely hold a Resend API key (it's a secret) and
+// Resend's send endpoint doesn't allow direct browser calls. So the
+// recommended mode is "proxy": a tiny serverless function you host holds
+// the key and forwards to Resend. "direct" mode is for quick prototype
+// testing only. "mailto" is the original behaviour (opens your mail app).
+const CFG_KEY = 'drfry_resend_cfg_v1';
+const CFG_DEFAULTS = { mode: 'mailto', fromName: 'Dr. Fry', fromEmail: 'jesse@contact.drfry.nl', replyTo: 'jesse@drfry.nl', backendUrl: '', endpoint: '', apiKey: '' };
+function readCfg() {
+  try { return { ...CFG_DEFAULTS, ...JSON.parse(localStorage.getItem(CFG_KEY) || '{}') }; }
+  catch { return { ...CFG_DEFAULTS }; }
+}
+const cfgSubs = new Set();
+function writeCfg(patch) {
+  const next = { ...readCfg(), ...patch };
+  try { localStorage.setItem(CFG_KEY, JSON.stringify(next)); } catch {}
+  cfgSubs.forEach((fn) => fn(next));
+  return next;
+}
+function useCfg() {
+  const [cfg, setCfg] = useState(readCfg);
+  useEffect(() => { const fn = (c) => setCfg({ ...c }); cfgSubs.add(fn); return () => cfgSubs.delete(fn); }, []);
+  return cfg;
+}
+const cfgConnected = (cfg) => (cfg.mode === 'proxy' && !!cfg.endpoint && !!cfg.fromEmail) || (cfg.mode === 'direct' && !!cfg.apiKey && !!cfg.fromEmail);
+
+// Shared "open the settings modal" signal so any panel can launch it.
+let _settingsOpen = false;
+const settingsOpenSubs = new Set();
+function setSettingsOpen(v) { _settingsOpen = v; settingsOpenSubs.forEach((fn) => fn(v)); }
+function useSettingsOpen() {
+  const [o, setO] = useState(_settingsOpen);
+  useEffect(() => { settingsOpenSubs.add(setO); return () => settingsOpenSubs.delete(setO); }, []);
+  return o;
+}
+
+function fromLine(cfg) {
+  if (!cfg.fromEmail) return '';
+  return cfg.fromName ? `${cfg.fromName} <${cfg.fromEmail}>` : cfg.fromEmail;
+}
+
+// Actually deliver the email. Returns the Resend response ({ id }) on success,
+// throws with a readable message on failure. Never called for mailto mode.
+async function sendEmail(cfg, { to, subject, text }) {
+  const from = fromLine(cfg);
+  const replyTo = cfg.replyTo || undefined;
+  if (cfg.mode === 'proxy') {
+    if (!cfg.endpoint) throw new Error('not-configured');
+    const res = await fetch(cfg.endpoint, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to, from, subject, text, replyTo }),
+    });
+    const txt = await res.text().catch(() => '');
+    if (!res.ok) throw new Error(`Proxy responded ${res.status}${txt ? ' · ' + txt.slice(0, 200) : ''}`);
+    try { return JSON.parse(txt); } catch { return {}; }
+  }
+  if (cfg.mode === 'direct') {
+    if (!cfg.apiKey) throw new Error('not-configured');
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${cfg.apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from, to: [to], subject, text, reply_to: replyTo }),
+    });
+    const txt = await res.text().catch(() => '');
+    if (!res.ok) throw new Error(`Resend responded ${res.status}${txt ? ' · ' + txt.slice(0, 200) : ''}`);
+    try { return JSON.parse(txt); } catch { return {}; }
+  }
+  throw new Error('not-configured');
+}
+
+const PROXY_SNIPPET = `// Vercel / Netlify / Cloudflare edge function — POST { to, from, subject, text, replyTo }
+export default async function handler(req) {
+  const { to, from, subject, text, replyTo } = await req.json();
+  const r = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: "Bearer " + process.env.RESEND_API_KEY,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ from, to: [to], subject, text, reply_to: replyTo }),
+  });
+  return new Response(await r.text(), {
+    status: r.status,
+    headers: {
+      "Content-Type": "application/json",
+      "Access-Control-Allow-Origin": "*", // lock to your dashboard origin in prod
+    },
+  });
+}`;
+
+function SettingsModal() {
+  const open = useSettingsOpen();
+  const saved = useCfg();
+  const [draft, setDraft] = useState(saved);
+  const [showSnippet, setShowSnippet] = useState(false);
+  useEffect(() => { if (open) setDraft(readCfg()); }, [open]);
+  if (!open) return null;
+
+  const set = (k) => (e) => setDraft((d) => ({ ...d, [k]: e.target.value }));
+  const label = { display:'block', fontFamily:'IBM Plex Mono, monospace', fontSize:9, letterSpacing:'0.14em', textTransform:'uppercase', color:'var(--warm-500)', marginBottom:7 };
+  const input = { width:'100%', background:'var(--porcelain)', border:'1px solid var(--warm-200)', padding:'11px 13px', fontSize:14, color:'var(--graphite)', fontFamily:'inherit' };
+  const modes = [['mailto','Mail client'],['proxy','Resend · proxy'],['direct','Resend · direct key']];
+
+  function save() { writeCfg(draft); setSettingsOpen(false); }
+
+  return (
+    <div onClick={() => setSettingsOpen(false)} style={{ position:'fixed', inset:0, zIndex:100, background:'rgba(17,19,21,0.45)', display:'flex', alignItems:'flex-start', justifyContent:'center', padding:'6vh 20px', overflowY:'auto' }}>
+      <div onClick={(e) => e.stopPropagation()} className="card" style={{ width:'100%', maxWidth:600, padding:'30px 32px' }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:8 }}>
+          <div>
+            <div className="mono" style={{ fontSize:10, letterSpacing:'0.14em', color:'var(--warm-500)', marginBottom:6 }}>EMAIL DELIVERY</div>
+            <h2 className="serif" style={{ fontSize:26, lineHeight:1 }}>Connect Resend</h2>
+          </div>
+          <button onClick={() => setSettingsOpen(false)} className="mono" style={{ fontSize:13, color:'var(--warm-500)', background:'transparent', border:'none', padding:4 }}>Close ✕</button>
+        </div>
+        <p style={{ fontSize:13, lineHeight:1.6, color:'var(--slate-800)', marginBottom:22, maxWidth:520 }}>
+          Send outbound mail straight from the dashboard. Because an API key can't live safely in the browser, the recommended mode routes through a small proxy you host that holds the key.
+        </p>
+
+        <label style={label}>Delivery mode</label>
+        <div className="seg" style={{ marginBottom:22 }}>
+          {modes.map(([id, lbl]) => (
+            <button key={id} className={draft.mode === id ? 'active' : ''} onClick={() => setDraft((d) => ({ ...d, mode:id }))}>{lbl}</button>
+          ))}
+        </div>
+
+        {draft.mode !== 'mailto' && (
+          <div className="ds-grid-2" style={{ display:'grid', gridTemplateColumns:'1fr 1.2fr', gap:16, marginBottom:18 }}>
+            <div>
+              <label style={label}>From name</label>
+              <input value={draft.fromName} onChange={set('fromName')} placeholder="Dr. Fry" style={input} />
+            </div>
+            <div>
+              <label style={label}>From email · verified domain</label>
+              <input value={draft.fromEmail} onChange={set('fromEmail')} placeholder="jesse@contact.drfry.nl" style={input} />
+            </div>
+          </div>
+        )}
+
+        <div style={{ marginBottom:18 }}>
+          <label style={label}>Sequencing backend URL · optional</label>
+          <input value={draft.backendUrl} onChange={set('backendUrl')} placeholder="https://your-app.vercel.app" style={input} />
+          <div className="mono" style={{ fontSize:11, color:'var(--warm-500)', lineHeight:1.5, marginTop:9 }}>
+            Deploy the <b style={{ color:'var(--slate-800)' }}>/backend</b> package, paste its URL here, and adding a cold lead auto-enrolls them in the sequence. Leave blank to keep leads local-only.
+          </div>
+        </div>
+
+        {draft.mode !== 'mailto' && (
+          <div style={{ marginBottom:18 }}>
+            <label style={label}>Reply-To · your real inbox</label>
+            <input value={draft.replyTo} onChange={set('replyTo')} placeholder="jesse@drfry.nl" style={input} />
+            <div className="mono" style={{ fontSize:11, color:'var(--warm-500)', lineHeight:1.5, marginTop:9 }}>
+              Send from <b style={{ color:'var(--slate-800)' }}>contact.drfry.nl</b> to protect your domain reputation; replies land in <b style={{ color:'var(--slate-800)' }}>{draft.replyTo || 'jesse@drfry.nl'}</b> (your Outlook). Leave blank to reply to the from-address.
+            </div>
+          </div>
+        )}
+
+        {draft.mode === 'proxy' && (
+          <div style={{ marginBottom:18 }}>
+            <label style={label}>Proxy endpoint URL</label>
+            <input value={draft.endpoint} onChange={set('endpoint')} placeholder="https://your-app.vercel.app/api/send" style={input} />
+            <button onClick={() => setShowSnippet((s) => !s)} className="mono" style={{ fontSize:11, color:'var(--amber-deep)', background:'transparent', border:'none', padding:'10px 0 0' }}>
+              {showSnippet ? '▾ Hide' : '▸ Show'} example proxy function
+            </button>
+            {showSnippet && (
+              <pre className="mono" style={{ fontSize:11, lineHeight:1.5, background:'var(--porcelain-2)', border:'1px solid var(--warm-200)', padding:14, marginTop:10, overflowX:'auto', whiteSpace:'pre' }}>{PROXY_SNIPPET}</pre>
+            )}
+          </div>
+        )}
+
+        {draft.mode === 'direct' && (
+          <div style={{ marginBottom:18 }}>
+            <label style={label}>Resend API key</label>
+            <input value={draft.apiKey} onChange={set('apiKey')} type="password" placeholder="re_xxxxxxxx" autoComplete="off" style={input} />
+            <div className="mono" style={{ fontSize:11, color:'var(--red)', lineHeight:1.5, marginTop:9, display:'flex', gap:8 }}>
+              <span>⚠</span>
+              <span>Prototype only. The key is stored in this browser and exposed to anyone with the dashboard open, and Resend may block the request via CORS. Use proxy mode for anything real.</span>
+            </div>
+          </div>
+        )}
+
+        {draft.mode === 'mailto' && (
+          <p className="mono" style={{ fontSize:12, color:'var(--warm-500)', lineHeight:1.6, marginBottom:18 }}>
+            Send opens your own email client pre-filled — nothing leaves the dashboard automatically. Switch to a Resend mode to send directly.
+          </p>
+        )}
+
+        <div style={{ display:'flex', gap:12, alignItems:'center', marginTop:6 }}>
+          <button className="ds-btn" onClick={save} style={{ background:'var(--amber)', color:'var(--graphite)', padding:'12px 22px', fontSize:13, fontWeight:600, letterSpacing:'0.04em' }}>SAVE</button>
+          <span className="mono" style={{ fontSize:11, color: cfgConnected(draft) || draft.mode==='mailto' ? 'var(--teal)' : 'var(--warm-500)' }}>
+            {draft.mode === 'mailto' ? 'Mail-client mode' : cfgConnected(draft) ? '✓ Ready to send via Resend' : 'Fill in the fields above to connect'}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ── Lead pipeline status ──────────────────────────────────────────
@@ -75,9 +342,9 @@ const flagsOf  = (map, c) => (map[keyFor(c)] && map[keyFor(c)].flags) || {};
 // Click-through is the qualification trigger — a real human action a scanner rarely fakes.
 // Every outbound email carries a live reason to click; a click promotes the lead to Engaged.
 const CLICK_ASSETS = [
-  { id:'roi',        label:'ROI calculator',          url:'https://drfry.co/roi-calculator' },
-  { id:'familymart', label:'FamilyMart demo & testing (PDF)', url:'https://drfry.co/familymart-demo-and-testing.pdf' },
-  { id:'casestudy',  label:'Seven-Eleven case study',  url:'https://drfry.co/case-study/seven-eleven' },
+  { id:'roi',        label:'ROI calculator',          url:'https://drfry.nl/roi-calculator' },
+  { id:'familymart', label:'FamilyMart demo & testing (PDF)', url:'https://drfry.nl/familymart-demo-and-testing.pdf' },
+  { id:'casestudy',  label:'Seven-Eleven case study',  url:'https://drfry.nl/case-study/seven-eleven' },
 ];
 const CLICK_BY_ID = Object.fromEntries(CLICK_ASSETS.map((a) => [a.id, a]));
 const STAGE_INDEX = Object.fromEntries(STATUSES.map((s, i) => [s.id, i]));
@@ -95,10 +362,12 @@ function toggleClick(map, c, assetId) {
 function readCommitments() {
   let stored = [];
   try { stored = JSON.parse(localStorage.getItem(STORE_KEY) || '[]'); } catch {}
-  // Combine seed + stored, mark source
+  const cold = readColdLeads();
+  // Combine seed + stored + cold, mark source
   const seed = SEED.map((s) => ({ ...s, source:'seed' }));
   const real = stored.map((s) => ({ ...s, source:'live' }));
-  return [...seed, ...real].sort((a,b) => b.ts - a.ts);
+  const coldLeads = cold.map((s) => ({ ...s, source:'cold', kind: s.kind || 'cold', seats: 0 }));
+  return [...seed, ...real, ...coldLeads].sort((a,b) => b.ts - a.ts);
 }
 
 function timeAgo(ts) {
@@ -120,6 +389,9 @@ function Sidebar({ active, setActive }) {
     { id:'investors', label:'Investors' },
     { id:'batch', label:'Batch order' },
     { id:'deployment', label:'Deployment' },
+    { id:'democlient', label:'Demo results' },
+    { id:'demoowner', label:'Demo portfolio' },
+    { id:'demointake', label:'Log a demo' },
   ];
   return (
     <aside className="sidebar" style={{ width: 240, borderRight:'1px solid var(--warm-200)', background:'var(--porcelain)', display:'flex', flexDirection:'column', position:'sticky', top:0, height:'100vh' }}>
@@ -244,6 +516,100 @@ function Overview({ commitments, totals }) {
 
 function RolePill({ role }) {
   return <span className="pill pill-grey">{role}</span>;
+}
+
+// ── Add cold outreach lead ────────────────────────────────────────
+// Cold leads don't come through the public form, so the operator logs them here.
+// Same shape as a reservation but seats:0 / kind:'cold' so they read '—' in the table.
+function AddLeadModal({ open, onClose }) {
+  const cfg = useCfg();
+  const blank = { name:'', email:'', org:'', role:'Cold outreach', phone:'', message:'' };
+  const [draft, setDraft] = useState(blank);
+  const [err, setErr] = useState('');
+  useEffect(() => { if (open) { setDraft(blank); setErr(''); } }, [open]);
+  if (!open) return null;
+
+  const set = (k) => (e) => setDraft((d) => ({ ...d, [k]: e.target.value }));
+  const label = { display:'block', fontFamily:'IBM Plex Mono, monospace', fontSize:9, letterSpacing:'0.14em', textTransform:'uppercase', color:'var(--warm-500)', marginBottom:7 };
+  const input = { width:'100%', background:'var(--porcelain)', border:'1px solid var(--warm-200)', padding:'11px 13px', fontSize:14, color:'var(--graphite)', fontFamily:'inherit' };
+  const roles = ['Cold outreach', 'Inbound', 'Referral', 'Distributor', 'Operator / chain', 'Investor'];
+
+  function save() {
+    const name = draft.name.trim();
+    const email = draft.email.trim();
+    if (!name) { setErr('Name is required.'); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setErr('Enter a valid email.'); return; }
+    const lead = {
+      name, email,
+      org: draft.org.trim(),
+      role: draft.role || 'Cold outreach',
+      phone: draft.phone.trim(),
+      message: draft.message.trim(),
+      seats: 0, kind: 'cold', ts: Date.now(),
+    };
+    addColdLead(lead);
+    // If a sequencing backend is configured, also enroll the lead so the
+    // automatic sequence starts. Fire-and-forget — local add already succeeded.
+    if (cfg.backendUrl) {
+      fetch(cfg.backendUrl.replace(/\/$/, '') + '/api/enroll', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, name, org: lead.org, role: lead.role, phone: lead.phone, note: lead.message }),
+      }).catch(() => {});
+    }
+    onClose();
+  }
+
+  return (
+    <div onClick={onClose} style={{ position:'fixed', inset:0, zIndex:100, background:'rgba(17,19,21,0.45)', display:'flex', alignItems:'flex-start', justifyContent:'center', padding:'6vh 20px', overflowY:'auto' }}>
+      <div onClick={(e) => e.stopPropagation()} className="card" style={{ width:'100%', maxWidth:560, padding:'30px 32px' }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:8 }}>
+          <div>
+            <div className="mono" style={{ fontSize:10, letterSpacing:'0.14em', color:'var(--warm-500)', marginBottom:6 }}>PIPELINE</div>
+            <h2 className="serif" style={{ fontSize:26, lineHeight:1 }}>Add cold outreach lead</h2>
+          </div>
+          <button onClick={onClose} className="mono" style={{ fontSize:13, color:'var(--warm-500)', background:'transparent', border:'none', padding:4 }}>Close ✕</button>
+        </div>
+        <p style={{ fontSize:13, lineHeight:1.6, color:'var(--slate-800)', marginBottom:22, maxWidth:460 }}>
+          Log a prospect you're reaching out to directly. They'll enter the pipeline as <b>New</b> — open the row afterward to compose the first email.
+          {cfg.backendUrl ? <span style={{ color:'var(--teal)' }}> Sequencing backend connected — they'll also be enrolled in the automatic sequence.</span> : null}
+        </p>
+
+        <div className="ds-grid-2" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, marginBottom:16 }}>
+          <div>
+            <label style={label}>Name *</label>
+            <input value={draft.name} onChange={set('name')} placeholder="Jane Tanaka" style={input} />
+          </div>
+          <div>
+            <label style={label}>Email *</label>
+            <input value={draft.email} onChange={set('email')} type="email" placeholder="jane@kitchen.jp" autoComplete="off" style={input} />
+          </div>
+          <div>
+            <label style={label}>Company</label>
+            <input value={draft.org} onChange={set('org')} placeholder="FamilyMart" style={input} />
+          </div>
+          <div>
+            <label style={label}>Type</label>
+            <select value={draft.role} onChange={set('role')} style={{ ...input, cursor:'pointer' }}>
+              {roles.map((r) => <option key={r} value={r}>{r}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={label}>Phone</label>
+            <input value={draft.phone} onChange={set('phone')} placeholder="+81 …" style={input} />
+          </div>
+        </div>
+        <div style={{ marginBottom:18 }}>
+          <label style={label}>Context / note</label>
+          <textarea value={draft.message} onChange={set('message')} rows={3} placeholder="Where they came from, what to open with…" style={{ ...input, resize:'vertical' }} />
+        </div>
+
+        <div style={{ display:'flex', gap:12, alignItems:'center', marginTop:6 }}>
+          <button className="ds-btn" onClick={save} style={{ background:'var(--amber)', color:'var(--graphite)', padding:'12px 22px', fontSize:13, fontWeight:600, letterSpacing:'0.04em' }}>ADD LEAD</button>
+          {err && <span className="mono" style={{ fontSize:11, color:'var(--red)' }}>{err}</span>}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function StatusPill({ id }) {
@@ -410,6 +776,10 @@ function ComposePanel({ c, sent, onSent }) {
   const [subject, setSubject] = useState(() => tpl.subject(c));
   const [body, setBody] = useState(() => tpl.body(c));
   const [justSent, setJustSent] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [err, setErr] = useState('');
+  const cfg = useCfg();
+  const resendMode = cfg.mode === 'proxy' || cfg.mode === 'direct';
 
   // When the template changes, refill subject + body
   useEffect(() => {
@@ -424,10 +794,29 @@ function ComposePanel({ c, sent, onSent }) {
   const clicks = clicksOf(map, c);
   const suppressed = !!(flags.bounced || flags.unsub);
 
-  function send() {
+  async function send() {
+    setErr('');
+    if (resendMode) {
+      setSending(true);
+      try {
+        const r = await sendEmail(cfg, { to: c.email, subject, text: body });
+        onSent(c, { subject, body, template: tpl.label, channel: 'resend', resendId: r && r.id });
+        setJustSent(true);
+        setTimeout(() => setJustSent(false), 2600);
+      } catch (e) {
+        const m = String((e && e.message) || e);
+        setErr(m === 'not-configured'
+          ? 'Add your From address and endpoint / key in Email settings first.'
+          : m + (m.includes('Failed to fetch') ? ' — likely CORS. Use proxy mode.' : ''));
+      } finally {
+        setSending(false);
+      }
+      return;
+    }
+    // mailto fallback — opens the operator's mail client pre-filled
     const url = `mailto:${encodeURIComponent(c.email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     window.location.href = url;
-    onSent(c);
+    onSent(c, { subject, body, template: tpl.label, channel: 'mailto' });
     setJustSent(true);
     setTimeout(() => setJustSent(false), 2600);
   }
@@ -445,6 +834,9 @@ function ComposePanel({ c, sent, onSent }) {
           ? <span className="pill pill-teal">Last sent {timeAgo(sentInfo.at)} · ×{sentInfo.count}</span>
           : <span className="pill pill-grey">Not contacted yet</span>}
       </div>
+
+      {/* Record of every email actually sent to this contact */}
+      <SentLog history={sentInfo && sentInfo.history} />
 
       {/* Lead stage + suppression */}
       <div style={{ display:'flex', gap:26, flexWrap:'wrap', alignItems:'flex-end', marginBottom:20, paddingBottom:20, borderBottom:'1px solid var(--warm-200)' }}>
@@ -543,16 +935,19 @@ function ComposePanel({ c, sent, onSent }) {
       </div>
 
       <div style={{ display:'flex', alignItems:'center', gap:14, flexWrap:'wrap' }}>
-        <button className="ds-btn" onClick={send} style={{
-          background: suppressed ? 'var(--warm-200)' : 'var(--amber)', color: suppressed ? 'var(--warm-500)' : 'var(--graphite)', padding:'13px 22px',
+        <button className="ds-btn" onClick={send} disabled={sending || suppressed} style={{
+          background: (suppressed || sending) ? 'var(--warm-200)' : 'var(--amber)', color: (suppressed || sending) ? 'var(--warm-500)' : 'var(--graphite)', padding:'13px 22px',
           fontSize:13, fontWeight:600, letterSpacing:'0.04em', border:'none',
         }}>
-          {sentInfo ? 'RESEND →' : 'SEND →'}
+          {sending ? 'SENDING…' : (sentInfo ? 'RESEND →' : 'SEND →')}
         </button>
         {suppressed && <span className="mono" style={{ fontSize:12, color:'var(--red)' }}>⚠ {flags.unsub ? 'Unsubscribed' : 'Bounced'} — sending suppressed</span>}
-        {justSent && <span className="mono" style={{ fontSize:12, color:'var(--teal)' }}>✓ Opened in your mail client</span>}
-        <span className="mono" style={{ fontSize:10, color:'var(--warm-500)', marginLeft:'auto', maxWidth:300, lineHeight:1.5, textAlign:'right' }}>
-          Prototype: opens your email app pre-filled. Wire to Resend to send directly from the dashboard.
+        {err && <span className="mono" style={{ fontSize:12, color:'var(--red)', maxWidth:320, lineHeight:1.5 }}>⚠ {err} <button onClick={() => setSettingsOpen(true)} style={{ background:'transparent', border:'none', color:'var(--amber-deep)', textDecoration:'underline', padding:0, fontSize:12 }}>Settings</button></span>}
+        {justSent && <span className="mono" style={{ fontSize:12, color:'var(--teal)' }}>✓ {resendMode ? 'Sent via Resend' : 'Opened in your mail client'}</span>}
+        <span className="mono" style={{ fontSize:10, color:'var(--warm-500)', marginLeft:'auto', maxWidth:320, lineHeight:1.5, textAlign:'right' }}>
+          {resendMode
+            ? <>Sends directly via Resend ({cfg.mode === 'proxy' ? 'proxy' : 'direct key'}). <button onClick={() => setSettingsOpen(true)} style={{ background:'transparent', border:'none', color:'var(--amber-deep)', textDecoration:'underline', padding:0, fontSize:10 }}>Change</button></>
+            : <>Prototype: opens your email app pre-filled. <button onClick={() => setSettingsOpen(true)} style={{ background:'transparent', border:'none', color:'var(--amber-deep)', textDecoration:'underline', padding:0, fontSize:10 }}>Connect Resend</button></>}
         </span>
       </div>
     </div>
@@ -563,7 +958,7 @@ function RecentTable({ commitments, title, compose }) {
   const [openKey, setOpenKey] = useState(null);
   const [sent, setSent] = useState(() => readSent());
   const map = useStatusMap();
-  const onSent = (c) => setSent(recordSent(c));
+  const onSent = (c, mail) => setSent(recordSent(c, mail));
   const cols = compose ? 7 : 6;
   return (
     <div className="card table-scroll">
@@ -630,6 +1025,7 @@ function RecentTable({ commitments, title, compose }) {
 function Investors({ commitments, totals }) {
   const [filter, setFilter] = useState('all');
   const [q, setQ] = useState('');
+  const [addOpen, setAddOpen] = useState(false);
   const map = useStatusMap();
   const counts = useMemo(() => {
     const c = { all: commitments.length, suppressed: 0 };
@@ -650,7 +1046,12 @@ function Investors({ commitments, totals }) {
   return (
     <div style={{ display:'flex', flexDirection:'column', gap: 16 }}>
       <div style={{ display:'flex', justifyContent:'space-between', gap: 16, flexWrap:'wrap', alignItems:'center' }}>
-        <input value={q} onChange={(e)=>setQ(e.target.value)} placeholder="Search name, fund, email…" style={{ background:'var(--porcelain)', border:'1px solid var(--warm-200)', padding:'10px 14px', fontSize:14, width: 280 }} />
+        <div style={{ display:'flex', gap:12, alignItems:'center', flexWrap:'wrap' }}>
+          <input value={q} onChange={(e)=>setQ(e.target.value)} placeholder="Search name, fund, email…" style={{ background:'var(--porcelain)', border:'1px solid var(--warm-200)', padding:'10px 14px', fontSize:14, width: 280 }} />
+          <button onClick={()=>setAddOpen(true)} className="ds-btn" style={{ display:'inline-flex', alignItems:'center', gap:8, background:'var(--graphite)', color:'var(--porcelain)', padding:'10px 16px', fontSize:13, fontWeight:600, letterSpacing:'0.03em', whiteSpace:'nowrap' }}>
+            <span style={{ fontSize:16, lineHeight:0 }}>+</span> Add cold outreach lead
+          </button>
+        </div>
         <div className="mono" style={{ fontSize:12, color:'var(--warm-500)' }}>{filtered.length} OF {commitments.length} LEADS</div>
       </div>
       <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
@@ -675,6 +1076,7 @@ function Investors({ commitments, totals }) {
       <div className="mono" style={{ fontSize:11, color:'var(--warm-500)', letterSpacing:'0.04em', lineHeight:1.6 }}>
         Click any row to compose a personalized message. Templates pre-fill from the investor's name, seats and the note they left — edit freely before sending. Open a row to set its stage or flag a bounce / unsubscribe. A green dot marks founders you've already contacted.
       </div>
+      <AddLeadModal open={addOpen} onClose={()=>setAddOpen(false)} />
     </div>
   );
 }
@@ -755,12 +1157,23 @@ function Deployment({ totals }) {
 function App() {
   const [active, setActive] = useState('overview');
   const [commitments, setCommitments] = useState(()=>readCommitments());
+  const buildDemoSites = () => [ ...(typeof window.loadIntakeAsSites === 'function' ? window.loadIntakeAsSites() : []), ...DEMO_MOCK ];
+  const [demoSites, setDemoSites] = useState(buildDemoSites);
+  const cfg = useCfg();
 
   useEffect(()=>{
     const onFocus = ()=> setCommitments(readCommitments());
     window.addEventListener('focus', onFocus);
     window.addEventListener('storage', onFocus);
-    return ()=>{ window.removeEventListener('focus', onFocus); window.removeEventListener('storage', onFocus); };
+    window.addEventListener('drfry-leads-changed', onFocus);
+    return ()=>{ window.removeEventListener('focus', onFocus); window.removeEventListener('storage', onFocus); window.removeEventListener('drfry-leads-changed', onFocus); };
+  }, []);
+
+  useEffect(()=>{
+    const refresh = ()=> setDemoSites(buildDemoSites());
+    window.addEventListener('drfry-intake-changed', refresh);
+    window.addEventListener('storage', refresh);
+    return ()=>{ window.removeEventListener('drfry-intake-changed', refresh); window.removeEventListener('storage', refresh); };
   }, []);
 
   const totals = useMemo(()=>{
@@ -774,7 +1187,7 @@ function App() {
     };
   }, [commitments]);
 
-  const titles = { overview:'Overview', investors:'Investors', batch:'Batch order', deployment:'Deployment' };
+  const titles = { overview:'Overview', investors:'Investors', batch:'Batch order', deployment:'Deployment', democlient:'Demo results', demoowner:'Demo portfolio', demointake:'Log a demo' };
 
   return (
     <div style={{ display:'flex', minHeight:'100vh' }}>
@@ -786,6 +1199,14 @@ function App() {
             <h1 className="serif" style={{ fontSize: 30, lineHeight:1 }}>{titles[active]}</h1>
           </div>
           <div style={{ display:'flex', alignItems:'center', gap: 22 }}>
+            <button onClick={() => setSettingsOpen(true)} className="mono" title="Email delivery settings" style={{
+              display:'inline-flex', alignItems:'center', gap:8, padding:'8px 13px', fontSize:11, letterSpacing:'0.06em',
+              border:'1px solid var(--warm-200)', background:'var(--porcelain)', color:'var(--slate-800)',
+            }}>
+              <span style={{ width:7, height:7, borderRadius:'50%', flexShrink:0, background: cfgConnected(cfg) ? 'var(--teal)' : 'var(--warm-500)' }}/>
+              {cfgConnected(cfg) ? 'RESEND CONNECTED' : 'CONNECT EMAIL'}
+            </button>
+            <div style={{ width:1, height:34, background:'var(--warm-200)' }}/>
             <div style={{ textAlign:'right' }}>
               <div className="mono" style={{ fontSize:10, color:'var(--warm-500)', letterSpacing:'0.1em' }}>CLOSES {ROUND.closeDate}</div>
               <div className="mono" style={{ fontSize:13, color: totals.remaining<=80?'var(--amber-deep)':'var(--graphite)', marginTop:3 }}>{totals.remaining} SEATS LEFT</div>
@@ -802,8 +1223,12 @@ function App() {
           {active==='investors' && <Investors commitments={commitments} totals={totals} />}
           {active==='batch' && <BatchOrder totals={totals} />}
           {active==='deployment' && <Deployment totals={totals} />}
+          {active==='democlient' && <div style={{ maxWidth:1040 }}><DemoClientPage sites={demoSites} setSites={setDemoSites} /></div>}
+          {active==='demoowner' && <div style={{ maxWidth:1040 }}><DemoOwnerPage sites={demoSites} /></div>}
+          {active==='demointake' && <DemoIntake />}
         </div>
       </main>
+      <SettingsModal />
     </div>
   );
 }
