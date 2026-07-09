@@ -286,7 +286,7 @@ function readCommittedSeats() {
 
 function CommitForm({ onCommit, committedSeats }) {
   const [seats, setSeats] = useState(1);
-  const [form, setForm] = useState({ name:'', email:'', org:'', role:'Angel / private', phone:'', message:'' });
+  const [form, setForm] = useState({ name:'', email:'', org:'', role:'Restaurant / QSR', phone:'', message:'' });
   const [errors, setErrors] = useState({});
   const [done, setDone] = useState(false);
   const remaining = ROUND.totalSeats - committedSeats;
@@ -305,11 +305,32 @@ function CommitForm({ onCommit, committedSeats }) {
   function submit(ev) {
     ev.preventDefault();
     if (!validate()) return;
-    const commitment = { ...form, seats, ticket: ROUND.ticket, amount: seats*ROUND.ticket, ts: Date.now() };
+    // Every lead from this page is a preorder — that's the pipeline type shown
+    // in the dashboard. The chosen customer segment (restaurant, hotel, …) is
+    // preserved in the note so it isn't lost.
+    const segment = form.role;
+    const note = segment ? `Customer type: ${segment}${form.message ? ' · ' + form.message : ''}` : form.message;
+    const commitment = { ...form, role: 'Preorder', segment, seats, ticket: ROUND.ticket, amount: seats*ROUND.ticket, ts: Date.now() };
     try {
       const raw = JSON.parse(localStorage.getItem(STORE_KEY) || '[]');
       raw.push(commitment);
       localStorage.setItem(STORE_KEY, JSON.stringify(raw));
+    } catch {}
+    // Also push the lead to the sequencing backend — fire-and-forget, the
+    // local record above already succeeded. Relative /api works on the
+    // deployed site (vercel.json proxy); otherwise fall back to the live
+    // backend directly (its CORS is open).
+    try {
+      const payload = JSON.stringify({
+        email: form.email, name: form.name, org: form.org, role: 'Preorder',
+        phone: form.phone, note, source: 'preorder-form',
+      });
+      const opts = { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payload };
+      fetch('/api/capture-lead', opts)
+        .then((r) => {
+          if (!r.ok || !(r.headers.get('content-type') || '').includes('json')) throw new Error('proxy miss');
+        })
+        .catch(() => fetch('https://dr-fry-sequencerr.vercel.app/api/capture-lead', opts).catch(() => {}));
     } catch {}
     onCommit();
     setDone(true);
