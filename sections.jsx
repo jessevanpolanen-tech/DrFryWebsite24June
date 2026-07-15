@@ -45,52 +45,79 @@ function DotWaveBg({ opacity = 0.25 }) {
   );
 }
 
-function Diagram5050kHz() {
-  // Schematic: two electrode plates with food (curve) between, dot field around food
+// Stable dot-field positions (seeded so they don't jump between renders)
+const FIELD_DOTS = (() => {
+  let s = 0x2f6e2b1;
+  const rnd = () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; };
+  return Array.from({ length: 80 }, () => ({ x: 90 + rnd() * 420, y: 90 + rnd() * 180 }));
+})();
+
+const _clampD = (v, a, b) => Math.max(a, Math.min(b, v));
+const _easeOut = (t) => 1 - Math.pow(1 - t, 3);
+// segment reveal: 0 before a, eased 0..1 between a and b, 1 after b
+const _seg = (p, a, b) => _easeOut(_clampD((p - a) / (b - a), 0, 1));
+
+function Diagram5050kHz({ progress = 1 }) {
+  // Schematic: two electrode plates with food (curve) between, dot field around food.
+  // Each element reveals as `progress` (0..1) advances, so it can be scroll-scrubbed.
+  const p = progress;
+  const frame = _seg(p, 0.00, 0.07);
+  const elA   = _seg(p, 0.07, 0.15);
+  const elB   = _seg(p, 0.15, 0.23);
+  const scl   = _seg(p, 0.23, 0.31);
+  const food  = _seg(p, 0.31, 0.44);
+  const annT  = _seg(p, 0.80, 0.90);
+  const annB  = _seg(p, 0.90, 1.00);
+
   return (
     <svg viewBox="0 0 600 360" style={{ width: '100%', height: 'auto', display: 'block' }}>
-      {/* Frame */}
-      <rect x="0.5" y="0.5" width="599" height="359" fill="none" stroke="var(--warm-200)" />
-      {/* Left electrode */}
-      <rect x="60" y="80" width="14" height="200" fill="var(--graphite)" />
-      <text x="32" y="300" fontSize="9" fontFamily="IBM Plex Mono" fill="var(--warm-500)">ELEC. A</text>
-      {/* Right electrode */}
-      <rect x="526" y="80" width="14" height="200" fill="var(--graphite)" />
-      <text x="528" y="300" fontSize="9" fontFamily="IBM Plex Mono" fill="var(--warm-500)">ELEC. B</text>
+      {/* Frame — traces on */}
+      <path d="M0.5 0.5 L599.5 0.5 L599.5 359.5 L0.5 359.5 Z" pathLength="1"
+        fill="none" stroke="var(--warm-200)"
+        strokeDasharray="1" strokeDashoffset={1 - frame} />
 
-      {/* RF wave field between electrodes */}
+      {/* Left electrode — grows from its center */}
+      <rect x="60" y={80 + 100 * (1 - elA)} width="14" height={200 * elA} fill="var(--graphite)" />
+      <text x="32" y="300" fontSize="9" fontFamily="IBM Plex Mono" fill="var(--warm-500)" opacity={elA}>ELEC. A</text>
+      {/* Right electrode */}
+      <rect x="526" y={80 + 100 * (1 - elB)} width="14" height={200 * elB} fill="var(--graphite)" />
+      <text x="528" y="300" fontSize="9" fontFamily="IBM Plex Mono" fill="var(--warm-500)" opacity={elB}>ELEC. B</text>
+
+      {/* RF wave field — arcs draw on, staggered left → right */}
       {Array.from({length: 9}).map((_,i) => {
         const x = 90 + i * 50;
+        const w = _seg(p, 0.44 + i * 0.022, 0.44 + i * 0.022 + 0.07);
         return (
-          <g key={i}>
-            <path d={`M${x},90 Q${x+25},180 ${x},270`} fill="none" stroke="var(--amber)" strokeWidth="1" opacity={0.6}/>
-          </g>
+          <path key={i} d={`M${x},90 Q${x+25},180 ${x},270`} pathLength="1"
+            fill="none" stroke="var(--amber)" strokeWidth="1" opacity={0.6}
+            strokeDasharray="1" strokeDashoffset={1 - w} />
         );
       })}
-      {/* Dot field */}
-      {Array.from({length: 80}).map((_,i) => {
-        const x = 90 + Math.random() * 420;
-        const y = 90 + Math.random() * 180;
-        return <circle key={i} cx={x} cy={y} r="1.2" fill="var(--amber)" opacity={0.55}/>;
+      {/* Dot field — pops in, staggered */}
+      {FIELD_DOTS.map((d, i) => {
+        const o = _clampD((p - (0.60 + (i / FIELD_DOTS.length) * 0.18)) / 0.03, 0, 1);
+        return <circle key={i} cx={d.x} cy={d.y} r="1.2" fill="var(--amber)" opacity={o * 0.55}/>;
       })}
 
-      {/* Food shape (potato/chip cluster) — abstract */}
-      <g transform="translate(300,180)">
+      {/* Food shape (potato/chip cluster) — scales up */}
+      <g transform={`translate(300,180) scale(${Math.max(0.0001, food)})`} opacity={food}>
         <ellipse cx="0" cy="0" rx="60" ry="32" fill="var(--porcelain-2)" stroke="var(--graphite)" strokeWidth="1.2"/>
         <ellipse cx="0" cy="0" rx="60" ry="32" fill="none" stroke="var(--amber)" strokeWidth="0.6" strokeDasharray="2 3"/>
         <text x="0" y="4" textAnchor="middle" fontSize="9" fontFamily="IBM Plex Mono" fill="var(--warm-500)">FOOD</text>
       </g>
 
-      {/* Annotations */}
-      <g fontFamily="IBM Plex Mono" fontSize="10" fill="var(--graphite)">
+      {/* Top annotation */}
+      <g fontFamily="IBM Plex Mono" fontSize="10" fill="var(--graphite)" opacity={annT}>
         <line x1="300" y1="40" x2="300" y2="70" stroke="var(--graphite)" strokeWidth="0.8"/>
         <text x="306" y="46">f ≈ 50 kHz · ultra-low RF field</text>
+      </g>
+      {/* Bottom annotation — connector line; the wording is rendered below as the result stamp */}
+      <g opacity={annB}>
         <line x1="300" y1="286" x2="300" y2="306" stroke="var(--graphite)" strokeWidth="0.8"/>
-        <text x="306" y="320">surface tension altered → oil ingress prevented</text>
       </g>
 
       {/* Scale */}
-      <g fontFamily="IBM Plex Mono" fontSize="9" fill="var(--warm-500)">
+      <g fontFamily="IBM Plex Mono" fontSize="9" fill="var(--warm-500)" opacity={scl}>
         <line x1="60" y1="342" x2="540" y2="342" stroke="var(--warm-500)" strokeWidth="0.6"/>
         <line x1="60" y1="338" x2="60" y2="346" stroke="var(--warm-500)" strokeWidth="0.6"/>
         <line x1="540" y1="338" x2="540" y2="346" stroke="var(--warm-500)" strokeWidth="0.6"/>
@@ -100,17 +127,200 @@ function Diagram5050kHz() {
   );
 }
 
+// Ordered components revealed during the scroll. Ranges match the SVG segments
+// in Diagram5050kHz so the words appear in lockstep with the drawing.
+const SCHEMATIC_STEPS = [
+  { a: 0.00, b: 0.07, t: 'Drawing frame',        d: 'Reference enclosure — the fryer cross-section.' },
+  { a: 0.07, b: 0.15, t: 'Electrode A (−)',       d: 'Conductive panel mounted against one fryer wall.' },
+  { a: 0.15, b: 0.23, t: 'Electrode B (+)',       d: 'Opposing panel — the pair defines the field gap.' },
+  { a: 0.23, b: 0.31, t: 'Interelectrode gap',    d: 'Typical 320–480 mm spacing between the panels.' },
+  { a: 0.31, b: 0.44, t: 'Food load',             d: 'Product submerged in oil between the panels.' },
+  { a: 0.44, b: 0.66, t: '50 kHz RF field',       d: 'Ultra-low-power waves span the gap, left to right.' },
+  { a: 0.60, b: 0.80, t: 'Field density',         d: 'Non-thermal energy distributed through the oil.' },
+  { a: 0.80, b: 0.90, t: 'Operating frequency',   d: 'f ≈ 50 kHz — the control field, labelled.' },
+  { a: 0.90, b: 1.00, t: 'Result',                d: 'Surface tension altered → oil ingress prevented.' },
+];
+
+// Legend that builds alongside the drawing — each row names + describes the
+// component currently appearing, highlighting the one being drawn.
+function SchematicLegend({ p }) {
+  return (
+    <ol style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+      {SCHEMATIC_STEPS.map((s, i) => {
+        const r = _seg(p, s.a, s.b);
+        const active = r > 0.001 && r < 0.999;
+        const done = r >= 0.999;
+        const titleColor = active ? 'var(--amber-deep)' : (r > 0 ? 'var(--graphite)' : 'var(--warm-500)');
+        return (
+          <li key={i} style={{
+            borderTop: '1px solid var(--warm-200)',
+            padding: '12px 0',
+            opacity: r > 0 ? 1 : 0.4,
+            transition: 'opacity .2s ease',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+              <span className="mono" style={{ fontSize: 10, color: active ? 'var(--amber-deep)' : 'var(--warm-500)', letterSpacing: '0.1em' }}>
+                {String(i + 1).padStart(2, '0')}
+              </span>
+              <span style={{ fontSize: 14, fontWeight: 500, color: titleColor, letterSpacing: '-0.005em' }}>{s.t}</span>
+            </div>
+            {/* draw-progress tick for this component */}
+            <div style={{ height: 2, background: 'var(--warm-200)', marginTop: 8, position: 'relative', overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', inset: '0 auto 0 0', width: `${r * 100}%`, background: done ? 'var(--graphite)' : 'var(--amber)' }} />
+            </div>
+            <p style={{ fontSize: 12.5, lineHeight: 1.5, color: 'var(--slate-800)', marginTop: 8, opacity: r, maxWidth: 320 }}>{s.d}</p>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+// Result stamp — the word RESULT sprays on letter-by-letter in graffiti red as
+// the drawing finishes, then the plain-language outcome fades in beside it.
+function ResultStamp({ p }) {
+  const letters = 'RESULT'.split('');
+  const ROT = [-6, 5, -3, 6, -5, 3]; // per-letter graffiti jitter
+  const sentence = _seg(p, 0.97, 1.0);
+  return (
+    <div style={{
+      marginTop: 28, paddingTop: 22, borderTop: '1px solid var(--warm-200)',
+      display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: '14px 20px'
+    }}>
+      <div aria-label="RESULT" style={{ display: 'inline-flex', gap: 3, lineHeight: 1 }}>
+        {letters.map((ch, i) => {
+          const a = 0.86 + i * 0.02;
+          const r = _seg(p, a, a + 0.045);
+          return (
+            <span key={i} aria-hidden="true" style={{
+              fontFamily: '"Rubik Spray Paint", system-ui, sans-serif',
+              fontSize: 46, color: '#D62828',
+              opacity: r,
+              transform: `translateY(${(1 - r) * 16}px) rotate(${ROT[i] * r}deg) scale(${0.7 + 0.3 * r})`,
+              transformOrigin: 'center bottom',
+              textShadow: '0 2px 0 rgba(120,12,12,0.22)',
+              display: 'inline-block',
+            }}>{ch}</span>
+          );
+        })}
+      </div>
+      <p className="mono" style={{
+        fontSize: 14, color: 'var(--slate-800)', margin: 0,
+        letterSpacing: '0.02em', opacity: sentence,
+        transform: `translateY(${(1 - sentence) * 6}px)`,
+      }}>
+        Surface tension altered → oil ingress prevented.
+      </p>
+    </div>
+  );
+}
+
+// Scroll-scrubbed wrapper: pins the figure and draws it on part-by-part as you
+// scroll through the track; reverses as you scroll back up.
+function ScrollSchematic() {
+  const trackRef = useRef(null);
+  const [p, setP] = useState(0);
+  const shortVp = () => (typeof window !== 'undefined') && (window.innerWidth <= 760 || window.innerHeight < 900);
+  const [isMobile, setIsMobile] = useState(shortVp);
+
+  useEffect(() => {
+    const onR = () => setIsMobile(shortVp());
+    window.addEventListener('resize', onR);
+    return () => window.removeEventListener('resize', onR);
+  }, []);
+
+  useEffect(() => {
+    if (isMobile) { setP(1); return; }
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce) { setP(1); return; }
+    let raf = 0;
+    const update = () => {
+      raf = 0;
+      const el = trackRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const total = rect.height - window.innerHeight;
+      const prog = total > 0 ? _clampD(-rect.top / total, 0, 1) : 0;
+      setP(prog);
+    };
+    const onScroll = () => { if (!raf) raf = requestAnimationFrame(update); };
+    update();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [isMobile]);
+
+  const Figure = ({ prog }) => (
+    <div className="schematic-fig" style={{ position: 'relative', width: '100%', background: 'var(--porcelain-2)', padding: 40, border: '1px solid var(--warm-200)' }}>
+      <div className="mono" style={{
+        fontSize: 10, letterSpacing: '0.15em', color: 'var(--warm-500)',
+        marginBottom: 24, display: 'flex', justifyContent: 'space-between', gap: 12
+      }}>
+        <span>FIG. 01 · SCHEMATIC OF INTERELECTRODE FIELD</span>
+        <span>{Math.round(prog * 100)}% DRAWN</span>
+      </div>
+      <div className="schematic-grid" style={{ display: 'grid', gridTemplateColumns: '1.55fr 1fr', gap: 36, alignItems: 'center' }}>
+        <Diagram5050kHz progress={prog} />
+        <SchematicLegend p={prog} />
+      </div>
+      <ResultStamp p={prog} />
+    </div>
+  );
+
+  if (isMobile) {
+    return (
+      <div style={{ marginBottom: 24 }}>
+        <style>{`.schematic-grid { grid-template-columns: 1fr !important; }`}</style>
+        <Figure prog={1} />
+      </div>
+    );
+  }
+
+  return (
+    <div ref={trackRef} style={{ height: '280vh', position: 'relative', marginBottom: 24 }}>
+      <style>{`
+        @media (max-width: 760px) {
+          .schematic-grid { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
+      <div style={{ position: 'sticky', top: 0, height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        {/* light vignette — gently focuses attention on the pinned figure */}
+        <div style={{
+          position: 'absolute', inset: 0, pointerEvents: 'none',
+          background: 'radial-gradient(120% 92% at 50% 44%, transparent 52%, rgba(17,19,21,0.045) 80%, rgba(17,19,21,0.10) 100%)',
+        }} />
+        <Figure prog={p} />
+      </div>
+    </div>
+  );
+}
+
 // ─────────────────────────────────────────────────────────────────
 // Top nav
 // ─────────────────────────────────────────────────────────────────
 
 function TopNav() {
+  const [open, setOpen] = useState(false);
+  const links = [
+    ['Technology', '#technology'],
+    ['Evidence', '#evidence'],
+    ['Savings', '#savings'],
+    ['Testimonials', 'Testimonials.html'],
+    ['Case study', 'Case Study.html'],
+    ['Specifications', '#specifications'],
+    ['Certifications', '#certifications'],
+    ['Support', '#support'],
+  ];
   return (
     <nav style={{
       position: 'fixed', top: 0, left: 0, right: 0, zIndex: 60,
-      padding: '18px 32px',
+      padding: '18px clamp(16px, 4vw, 32px)',
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      background: 'rgba(250,250,250,0.7)',
+      background: 'rgba(250,250,250,0.78)',
       backdropFilter: 'blur(10px)',
       WebkitBackdropFilter: 'blur(10px)',
       borderBottom: '1px solid var(--warm-200)',
@@ -126,16 +336,7 @@ function TopNav() {
         <span className="mono" style={{ fontSize: 10, color: 'var(--warm-500)', letterSpacing:'0.15em', marginLeft: 4 }}>ProWave™ EU</span>
       </div>
       <div className="ds-nav-links" style={{ display: 'flex', gap: 32, color: 'var(--slate-800)' }}>
-        {[
-          ['Technology', '#technology'],
-          ['Evidence', '#evidence'],
-          ['Savings', '#savings'],
-          ['Testimonials', 'Testimonials.html'],
-          ['Case study', 'Case Study.html'],
-          ['Specifications', '#specifications'],
-          ['Certifications', '#certifications'],
-          ['Support', '#support'],
-        ].map(([label, href]) => (
+        {links.map(([label, href]) => (
           <a key={label} className="ds-navlink" href={href} style={{
             color: 'inherit', textDecoration: 'none',
             fontSize: 13, fontWeight: 500
@@ -143,13 +344,43 @@ function TopNav() {
         ))}
       </div>
       <div style={{ display:'flex', gap: 12, alignItems:'center' }}>
-        <span className="mono" style={{ fontSize: 10, color:'var(--warm-500)', letterSpacing:'0.15em' }}>EN · €</span>
-        <a className="ds-btn" href="Request Assessment.html" style={{
+        <span className="mono ds-locale" style={{ fontSize: 10, color:'var(--warm-500)', letterSpacing:'0.15em' }}>EN · €</span>
+        <a className="ds-btn ds-desktop-cta" href="Request Assessment.html" style={{
           background: 'var(--graphite)', color: 'var(--porcelain)',
           padding: '10px 18px', textDecoration: 'none', fontSize: 12, fontWeight: 500,
           letterSpacing: '0.06em'
         }}>REQUEST ASSESSMENT →</a>
+        <button className="ds-mobile-toggle" aria-label="Menu" aria-expanded={open} onClick={() => setOpen(o => !o)}
+          style={{ display:'none', width:40, height:40, alignItems:'center', justifyContent:'center',
+            background:'var(--graphite)', border:'none', padding:0, cursor:'pointer' }}>
+          <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+            {open ? (
+              <g stroke="var(--porcelain)" strokeWidth="1.6" strokeLinecap="round">
+                <line x1="3" y1="3" x2="15" y2="15"/><line x1="15" y1="3" x2="3" y2="15"/>
+              </g>
+            ) : (
+              <g stroke="var(--porcelain)" strokeWidth="1.6" strokeLinecap="round">
+                <line x1="2" y1="5" x2="16" y2="5"/><line x1="2" y1="9" x2="16" y2="9"/><line x1="2" y1="13" x2="16" y2="13"/>
+              </g>
+            )}
+          </svg>
+        </button>
       </div>
+
+      {open && (
+        <div style={{ position:'absolute', top:'100%', left:0, right:0,
+          background:'var(--porcelain)', borderBottom:'1px solid var(--warm-200)',
+          boxShadow:'0 16px 30px rgba(17,19,21,0.12)', display:'flex', flexDirection:'column',
+          padding:'8px clamp(16px, 4vw, 32px) 18px', maxHeight:'calc(100vh - 62px)', overflowY:'auto' }}>
+          {links.map(([label, href]) => (
+            <a key={label} href={href} onClick={() => setOpen(false)} style={{ color:'var(--graphite)', textDecoration:'none',
+              fontSize:16, fontWeight:500, padding:'14px 2px', borderBottom:'1px solid var(--warm-200)' }}>{label}</a>
+          ))}
+          <a href="Request Assessment.html" onClick={() => setOpen(false)} className="ds-btn" style={{ marginTop:16,
+            background:'var(--graphite)', color:'var(--porcelain)', padding:'15px 18px', textAlign:'center',
+            textDecoration:'none', fontSize:13, fontWeight:600, letterSpacing:'0.06em' }}>REQUEST ASSESSMENT →</a>
+        </div>
+      )}
     </nav>
   );
 }
@@ -161,7 +392,7 @@ function TopNav() {
 function Mechanism() {
   return (
     <section id="technology" style={{ padding: '160px 0 140px', background: 'var(--porcelain)' }}>
-      <div style={{ maxWidth: 980, margin: '0 auto', padding: '0 40px' }}>
+      <div className="wrap" style={{ maxWidth: 980, margin: '0 auto', padding: '0 40px' }}>
         <Eyebrow num="01 / MECHANISM">How prevention technology works</Eyebrow>
         <h2 className="serif" style={{ fontSize: 56, lineHeight: 1.05, letterSpacing: '-0.01em', marginBottom: 32, maxWidth: 760 }}>
           Not a filter. Not a cleaner.<br/>
@@ -171,21 +402,17 @@ function Mechanism() {
           ProWave™ is a retrofit unit, not a heating device. Two electrode panels mount inside the fryer, generating an extremely weak radio-frequency field between them. The field alters the oil-water boundary at the surface of the food, preventing oil ingress before it occurs.
         </p>
 
-        {/* The schematic */}
-        <div style={{
-          background: 'var(--porcelain-2)',
-          padding: 40,
-          border: '1px solid var(--warm-200)',
-          marginBottom: 24,
-        }}>
-          <div className="mono" style={{
-            fontSize: 10, letterSpacing: '0.15em', color: 'var(--warm-500)',
-            marginBottom: 18, display:'flex', justifyContent:'space-between'
-          }}>
-            <span>FIG. 01 · SCHEMATIC OF INTERELECTRODE FIELD</span>
-          </div>
-          <Diagram5050kHz />
-        </div>
+        {/* Real product photo — the retrofit in place */}
+        <figure style={{ margin: '0 0 64px', border: '1px solid var(--warm-200)', background: 'var(--porcelain-2)' }}>
+          <img src="assets/photo-install.jpg" alt="ProWave control unit with two electrode panels lowering into a fryer oil bath"
+            style={{ width: '100%', height: 'auto', display: 'block' }} />
+          <figcaption className="mono" style={{ fontSize: 10, letterSpacing: '0.15em', color: 'var(--warm-500)', padding: '14px 18px', borderTop: '1px solid var(--warm-200)', textTransform: 'uppercase' }}>
+            Fig. 01 · Cabinet + two panels retrofit into an existing fryer
+          </figcaption>
+        </figure>
+
+        {/* The schematic — pins + draws on part-by-part as you scroll */}
+        <ScrollSchematic />
 
         {/* Three pillars */}
         <div className="ds-grid-3" style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap: 24, marginTop: 80 }}>
@@ -224,8 +451,8 @@ function Evidence() {
       background: 'var(--graphite)',
       color: 'var(--porcelain)',
     }}>
-      <div style={{ maxWidth: 980, margin: '0 auto', padding: '0 40px' }}>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap: 28, marginBottom: 32 }}>
+      <div className="wrap" style={{ maxWidth: 980, margin: '0 auto', padding: '0 40px' }}>
+        <div style={{ display:'flex', flexWrap:'wrap', justifyContent:'space-between', alignItems:'center', gap: 28, marginBottom: 32 }}>
           <div>
             <div style={{ color: 'var(--warm-500)' }}>
               <Eyebrow num="02 / EVIDENCE">Measured. Not asserted.</Eyebrow>
@@ -243,7 +470,28 @@ function Evidence() {
           </div>
         </div>
 
-        <div style={{
+        {/* The line, in Japan — real chef, real production kitchen */}
+        <div className="chef-row" style={{
+          display: 'flex', gap: 48, alignItems: 'center', flexWrap: 'wrap',
+          margin: '8px 0 4px', padding: '4px 0 8px',
+        }}>
+          <figure style={{ position: 'relative', margin: 0, flex: '0 0 auto', width: 236, transform: 'rotate(-2.4deg)' }}>
+            <img src="assets/chef-cooking.jpg" alt="A production chef at the fry line in a Japanese kitchen using Dr. Fry"
+              style={{ display: 'block', width: '100%', height: 'auto', borderRadius: 8, border: '1px solid rgba(250,250,250,0.22)' }} />
+            <span aria-hidden="true" style={{ position: 'absolute', inset: -8, borderRadius: 12, border: '1px solid rgba(242,162,58,0.32)', pointerEvents: 'none' }}></span>
+          </figure>
+          <figure style={{ position: 'relative', margin: 0, flex: '1 1 300px', minWidth: 260, maxWidth: 420, transform: 'rotate(1.8deg)' }}>
+            <img src="assets/chef-portrait.jpg" alt="Portrait of the chef at the production line"
+              style={{ display: 'block', width: '100%', height: 'auto', borderRadius: 8, border: '1px solid rgba(250,250,250,0.22)' }} />
+            <span aria-hidden="true" style={{ position: 'absolute', inset: -8, borderRadius: 12, border: '1px solid rgba(242,162,58,0.32)', pointerEvents: 'none' }}></span>
+          </figure>
+          <figcaption className="mono" style={{ flex: '1 1 200px', minWidth: 200, fontSize: 11, letterSpacing: '0.1em', color: 'var(--warm-500)', lineHeight: 1.7 }}>
+            <span style={{ color: 'var(--porcelain)' }}>ON THE LINE</span><br/>
+            A production chef at Musashino Corp., Japan — the field running on a live fry line, not a lab bench.
+          </figcaption>
+        </div>
+
+        <div className="evi-card" style={{
           border: '1px solid #2a2d31',
           background: '#181a1d',
           padding: 36,
@@ -325,6 +573,47 @@ function Evidence() {
           ))}
         </div>
 
+        {/* Observed bubble behaviour — microscopy comparison */}
+        <figure className="evi-card" style={{
+          border: '1px solid #2a2d31', background: '#181a1d',
+          padding: 0, marginBottom: 32, overflow:'hidden'
+        }}>
+          <div className="mono" style={{
+            fontSize: 10, letterSpacing:'0.15em', color:'var(--warm-500)',
+            padding:'18px 24px', borderBottom:'1px solid #2a2d31',
+            display:'flex', justifyContent:'space-between', flexWrap:'wrap', gap: 12
+          }}>
+            <span>OBSERVED · OIL–WATER INTERFACE UNDER LOAD</span>
+            <span style={{ color:'var(--amber)' }}>SMALLER + FEWER BUBBLES</span>
+          </div>
+          <img src="assets/bubble-comparison.png" alt="Side-by-side macro photography of frying with Dr. Fry 2s off versus on — the field on produces visibly smaller and fewer bubbles at the oil interface"
+            style={{ width:'100%', height:'auto', display:'block' }} />
+          <a href="https://www.youtube.com/watch?v=vy-Etz3NR1M" target="_blank" rel="noopener noreferrer"
+            style={{
+              display:'flex', alignItems:'center', justifyContent:'space-between', gap: 18, flexWrap:'wrap',
+              padding:'20px 24px', borderTop:'1px solid #2a2d31', textDecoration:'none', color:'var(--porcelain)'
+            }}>
+            <div style={{ display:'flex', alignItems:'center', gap: 16 }}>
+              <span style={{
+                flexShrink:0, width:42, height:42, borderRadius:'50%', background:'var(--amber)',
+                display:'flex', alignItems:'center', justifyContent:'center'
+              }}>
+                <svg width="15" height="15" viewBox="0 0 12 14" fill="var(--graphite)"><path d="M0 0 L12 7 L0 14 Z"/></svg>
+              </span>
+              <div>
+                <div style={{ fontSize: 15, fontWeight: 500 }}>Watch the live demonstration</div>
+                <div className="mono" style={{ fontSize: 10, letterSpacing:'0.12em', color:'var(--warm-500)', marginTop: 4 }}>
+                  FILMED AT OZEKI SUPERMARKET · JAPAN
+                </div>
+              </div>
+            </div>
+            <span className="mono" style={{ display:'flex', alignItems:'center', gap: 12, fontSize: 11, letterSpacing:'0.1em', color:'var(--amber)' }}>
+              <img src="assets/ozeki-logo.png" alt="Ozeki supermarket logo" style={{ height: 22, width:'auto', display:'block', background:'#fff', padding:'6px 10px', borderRadius: 4 }} />
+              YOUTUBE ↗
+            </span>
+          </a>
+        </figure>
+
         {/* Methodology footer */}
         <div className="mono ds-grid-3" style={{
           fontSize: 11, color: 'var(--warm-500)', lineHeight: 1.6,
@@ -358,10 +647,13 @@ function ROI() {
   const annual = oilCost * (oilWeek / 20) * (days / 7);  // fresh-oil spend, baseline
   const freshSaved = annual * reduction;                 // less fresh oil bought
   const saved = freshSaved;                               // net annual benefit — resale excluded (operator-specific)
-  const UNIT_PRICE = 4000, LIST_PRICE = 5900, RENT = 199; // Founding Partner / list / rent
-  const payback = saved > 0 ? (UNIT_PRICE / saved) * 12 : 0; // €4,000 unit price, in months
-  const monthlyNet = saved / 12 - RENT;                  // net after €199/mo rental
-  const cashPositive = monthlyNet > 0;
+  const UNIT_PRICE = 4500, LIST_PRICE = 5900; // Founding Partner / list
+  const payback = saved > 0 ? (UNIT_PRICE / saved) * 12 : 0; // €4,500 preorder price, in months
+
+  // The headline saving stays blurred until the operator sends their details.
+  // Session-only (not persisted) so it always starts blurred on a fresh load.
+  const [unlocked, setUnlocked] = useState(false);
+  const unlock = () => setUnlocked(true);
 
   function Slider({label, unit, val, min, max, step, onChange}) {
     return (
@@ -384,23 +676,22 @@ function ROI() {
 
   return (
     <section id="savings" style={{ padding: '140px 0', background: 'var(--porcelain)' }}>
-      <div style={{ maxWidth: 980, margin: '0 auto', padding: '0 40px' }}>
+      <div className="wrap" style={{ maxWidth: 980, margin: '0 auto', padding: '0 40px' }}>
         <Eyebrow num="03 / SAVINGS">Savings calculator</Eyebrow>
         <h2 className="serif" style={{ fontSize: 56, lineHeight: 1.05, letterSpacing:'-0.01em', marginBottom: 24, maxWidth: 760 }}>
           The unit pays for itself.<br/>
           <span style={{ color: 'var(--warm-500)' }}>Most operators see payback within the first year.</span>
         </h2>
 
-        <div className="mono ds-grid-3" style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', border:'1px solid var(--warm-200)', maxWidth:760, marginBottom:48 }}>
+        <div className="mono ds-grid-2" style={{ display:'grid', gridTemplateColumns:'repeat(2, 1fr)', border:'1px solid var(--warm-200)', maxWidth:520, marginBottom:48 }}>
           {[
-            ['FOUNDING PARTNER', '€4,000', 'one-time · today', false],
-            ['LIST', '€5,900', 'after founder programme', true],
-            ['OR RENT', '€199 / mo', 'cash positive from month one', false],
+            ['FOUNDING PARTNER', 'TBA', 'preorder · paid in full', false],
+            ['LIST', 'TBA', 'after founder programme', true],
           ].map(([k,v,s,strike],i)=>(
-            <div key={k} style={{ padding:'16px 18px', borderRight: i<2?'1px solid var(--warm-200)':'none' }}>
+            <div key={k} style={{ padding:'16px 18px', borderRight: i<1?'1px solid var(--warm-200)':'none' }}>
               <div style={{ fontSize:9, letterSpacing:'0.14em', color:'var(--warm-500)', marginBottom:8 }}>{k}</div>
               <div className="serif" style={{ fontSize:26, lineHeight:1, color: i===0?'var(--graphite)':'var(--warm-500)', textDecoration: strike?'line-through':'none' }}>{v}</div>
-              <div style={{ fontSize:9, letterSpacing:'0.06em', color: i===2?'var(--amber-deep)':'var(--warm-500)', marginTop:7 }}>{s}</div>
+              <div style={{ fontSize:9, letterSpacing:'0.06em', color:'var(--warm-500)', marginTop:7 }}>{s}</div>
             </div>
           ))}
         </div>
@@ -410,7 +701,7 @@ function ROI() {
           border:'1px solid var(--graphite)',
         }}>
           {/* Inputs */}
-          <div style={{ padding: 40, borderRight: '1px solid var(--graphite)' }}>
+          <div className="calc-pane" style={{ padding: 40, borderRight: '1px solid var(--graphite)' }}>
             <div className="mono" style={{
               fontSize: 10, letterSpacing: '0.15em', color: 'var(--warm-500)',
               marginBottom: 28, paddingBottom: 14, borderBottom: '1px solid var(--warm-200)',
@@ -426,7 +717,7 @@ function ROI() {
           </div>
 
           {/* Outputs */}
-          <div style={{ padding: 40, background: 'var(--porcelain-2)', position: 'relative' }}>
+          <div className="calc-pane" style={{ padding: 40, background: 'var(--porcelain-2)', position: 'relative' }}>
             <div className="mono" style={{
               fontSize: 10, letterSpacing: '0.15em', color: 'var(--warm-500)',
               marginBottom: 28, paddingBottom: 14, borderBottom: '1px solid var(--warm-200)',
@@ -443,8 +734,30 @@ function ROI() {
             </div>
             <div style={{ marginBottom: 24 }}>
               <div className="mono" style={{ fontSize:11, color:'var(--amber-deep)', letterSpacing:'0.1em', marginBottom: 8 }}>NET SAVED PER YEAR</div>
-              <div className="serif" style={{ fontSize: 88, lineHeight: 1, letterSpacing:'-0.02em', color:'var(--graphite)' }}>
-                €{Math.round(saved).toLocaleString()}
+              <div style={{ position:'relative' }}>
+                <div className="serif roi-bignum" style={{
+                  fontSize: 88, lineHeight: 1, letterSpacing:'-0.02em', color:'var(--graphite)',
+                  filter: unlocked ? 'none' : 'blur(14px)',
+                  userSelect: unlocked ? 'auto' : 'none',
+                  transition: 'filter .5s ease',
+                }} aria-hidden={!unlocked}>
+                  €{Math.round(saved).toLocaleString()}
+                </div>
+                {!unlocked && (
+                  <button type="button" onClick={() => { const el = document.getElementById('roi-name'); if (el) el.focus({ preventScroll: true }); }}
+                    style={{
+                      position:'absolute', inset:0, display:'flex', alignItems:'center', gap:9,
+                      justifyContent:'flex-start', background:'transparent', border:'none',
+                      cursor:'pointer', fontFamily:"'IBM Plex Mono', monospace", fontSize:11,
+                      letterSpacing:'0.1em', textTransform:'uppercase', color:'var(--warm-500)',
+                    }}>
+                    <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true" style={{ flexShrink:0 }}>
+                      <rect x="2.5" y="6" width="9" height="6.5" rx="1" fill="none" stroke="var(--amber-deep)" strokeWidth="1.2"/>
+                      <path d="M4.5 6 V4 a2.5 2.5 0 0 1 5 0 V6" fill="none" stroke="var(--amber-deep)" strokeWidth="1.2"/>
+                    </svg>
+                    Send your details to reveal
+                  </button>
+                )}
               </div>
             </div>
             <div className="mono" style={{
@@ -453,7 +766,7 @@ function ROI() {
             }}>
               <div style={{ display:'flex', justifyContent:'space-between' }}>
                 <span>Fresh oil saved (−{reductionPct}%)</span>
-                <span style={{ color:'var(--graphite)' }}>+€{Math.round(freshSaved).toLocaleString()}</span>
+                <span style={{ color:'var(--graphite)', filter: unlocked ? 'none' : 'blur(7px)', userSelect: unlocked ? 'auto' : 'none', transition:'filter .5s ease' }}>+€{Math.round(freshSaved).toLocaleString()}</span>
               </div>
             </div>
             <div style={{
@@ -462,39 +775,22 @@ function ROI() {
             }}>
               <div>
                 <div className="mono" style={{ fontSize: 10, color:'var(--warm-500)', letterSpacing:'0.1em', marginBottom: 4 }}>PAYBACK</div>
-                <div className="serif" style={{ fontSize: 28 }}>{payback.toFixed(1)} <span style={{ fontSize: 14, color:'var(--warm-500)' }}>months</span></div>
+                <div className="serif" style={{ fontSize: 28 }}>TBA</div>
               </div>
               <div>
                 <div className="mono" style={{ fontSize: 10, color:'var(--warm-500)', letterSpacing:'0.1em', marginBottom: 4 }}>5-YEAR NET</div>
-                <div className="serif" style={{ fontSize: 28 }}>€{Math.round(saved * 5 - UNIT_PRICE).toLocaleString()}</div>
+                <div className="serif" style={{ fontSize: 28, filter: unlocked ? 'none' : 'blur(9px)', userSelect: unlocked ? 'auto' : 'none', transition:'filter .5s ease' }}>TBA</div>
               </div>
             </div>
 
-            {/* Rental option — cash positive from month one */}
-            <div style={{ marginTop: 20, paddingTop: 20, borderTop:'1px solid var(--warm-200)', display:'flex', justifyContent:'space-between', alignItems:'flex-end', gap: 16, flexWrap:'wrap' }}>
-              <div>
-                <div className="mono" style={{ fontSize: 10, color:'var(--warm-500)', letterSpacing:'0.1em', marginBottom: 4 }}>OR RENT</div>
-                <div className="serif" style={{ fontSize: 28 }}>€199 <span style={{ fontSize: 14, color:'var(--warm-500)' }}>/ month</span></div>
-              </div>
-              <div style={{ textAlign:'right' }}>
-                <div className="mono" style={{ fontSize: 10, color:'var(--warm-500)', letterSpacing:'0.1em', marginBottom: 4 }}>NET / MONTH AFTER RENT</div>
-                <div className="serif" style={{ fontSize: 28, color: cashPositive ? 'var(--graphite)' : 'var(--red)' }}>{cashPositive ? '+' : ''}€{Math.round(monthlyNet).toLocaleString()}</div>
-              </div>
-            </div>
-            {cashPositive && (
-              <div className="mono" style={{ marginTop: 14, fontSize: 10, letterSpacing:'0.12em', color:'var(--amber-deep)', border:'1px solid var(--amber)', padding:'9px 13px', display:'inline-flex', alignItems:'center', gap:9 }}>
-                <svg width="8" height="8" viewBox="0 0 10 10" aria-hidden="true"><rect x="5" y="0" width="7.07" height="7.07" transform="rotate(45 5 0)" fill="var(--amber)"/></svg>
-                CASH POSITIVE FROM MONTH ONE
-              </div>
-            )}
           </div>
         </div>
 
         <p className="mono" style={{ fontSize: 11, color:'var(--warm-500)', lineHeight: 1.6, marginTop: 18, maxWidth: 720 }}>
-          ASSUMPTIONS · 36% oil-usage reduction documented at Musashino Corporation (2,158 L → 1,398 L), a Seven-Eleven Japan production facility. Single-facility result; your figures vary by product, line and oil. Figures reflect reduced oil purchasing only; any change in used-oil resale income is operator-specific and excluded. Founding Partner price €4,000 ex VAT (list €5,900 once the founder programme closes), single-fryer install. Rental €199/month — cash positive from month one for most operations.
+          ASSUMPTIONS · 36% oil-usage reduction documented at Musashino Corporation (2,158 L → 1,398 L), a Seven-Eleven Japan production facility. Single-facility result; your figures vary by product, line and oil. Figures reflect reduced oil purchasing only; any change in used-oil resale income is operator-specific and excluded. Founding Partner price €4,000 ex VAT (list €5,900 once the founder programme closes), single-fryer install.
         </p>
 
-        <RoiEmail figures={{ oilCost, oilWeek, days, annual, freshSaved, saved, payback, reductionPct, fiveYear: saved * 5 - UNIT_PRICE }} />
+        <RoiEmail onSent={unlock} revealed={unlocked} figures={{ oilCost, oilWeek, days, annual, freshSaved, saved, payback, reductionPct, fiveYear: saved * 5 - UNIT_PRICE }} />
       </div>
     </section>
   );
@@ -506,7 +802,7 @@ function ROI() {
 // ─────────────────────────────────────────────────────────────────
 const STORE_KEY = 'drfry_round_commitments_v1';
 
-function RoiEmail({ figures }) {
+function RoiEmail({ figures, onSent, revealed }) {
   const [form, setForm] = useState({ name:'', email:'', company:'', message:'' });
   const [errors, setErrors] = useState({});
   const [sent, setSent] = useState(false);
@@ -545,6 +841,7 @@ function RoiEmail({ figures }) {
       localStorage.setItem(STORE_KEY, JSON.stringify(raw));
     } catch {}
     setSent(true);
+    if (onSent) onSent();
   }
 
   const inputBase = {
@@ -561,7 +858,7 @@ function RoiEmail({ figures }) {
     <div id="roi-email" style={{ marginTop: 28, border:'1px solid var(--graphite)', background:'var(--graphite)', color:'var(--porcelain)' }}>
       <div className="ds-grid-2" style={{ display:'grid', gridTemplateColumns:'0.85fr 1.15fr', gap: 0 }}>
         {/* Left: pitch + live figure */}
-        <div style={{ padding:'38px 40px', borderRight:'1px solid #2a2d31' }}>
+        <div className="email-pane" style={{ padding:'38px 40px', borderRight:'1px solid #2a2d31' }}>
           <div className="mono" style={{ fontSize:10, letterSpacing:'0.15em', color:'var(--amber)', marginBottom: 20 }}>REQUEST A TAILORED QUOTE</div>
           <div className="serif" style={{ fontSize: 30, lineHeight:1.12, marginBottom: 18 }}>
             Send us your numbers and a word about your kitchen.
@@ -570,14 +867,14 @@ function RoiEmail({ figures }) {
             We'll reply with a tailored quote and a measured-trial offer for your site. Your current estimate:
           </p>
           <div style={{ display:'flex', alignItems:'baseline', gap: 10, marginTop: 20 }}>
-            <span className="serif" style={{ fontSize: 44, color:'var(--amber)' }}>{eur(figures.saved)}</span>
+            <span className="serif" style={{ fontSize: 44, color:'var(--amber)', filter: (sent || revealed) ? 'none' : 'blur(11px)', userSelect: (sent || revealed) ? 'auto' : 'none', transition:'filter .5s ease' }}>{eur(figures.saved)}</span>
             <span className="mono" style={{ fontSize: 11, color:'var(--warm-500)' }}>SAVED / YEAR</span>
           </div>
         </div>
 
         {/* Right: form */}
         {sent ? (
-          <div style={{ padding:'38px 40px', display:'flex', flexDirection:'column', justifyContent:'center' }}>
+          <div className="email-pane" style={{ padding:'38px 40px', display:'flex', flexDirection:'column', justifyContent:'center' }}>
             <div style={{ display:'inline-flex', marginBottom: 16 }}>
               <svg width="40" height="40" viewBox="0 0 40 40"><circle cx="20" cy="20" r="19" fill="none" stroke="var(--amber)" strokeWidth="1.4"/><path d="M12 20.5 L18 26 L28 14.5" fill="none" stroke="var(--porcelain)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
             </div>
@@ -590,7 +887,7 @@ function RoiEmail({ figures }) {
             </button>
           </div>
         ) : (
-          <form onSubmit={submit} noValidate style={{ padding:'34px 40px' }}>
+          <form onSubmit={submit} noValidate className="email-pane" style={{ padding:'34px 40px' }}>
             <div className="ds-grid-2" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap: 18, marginBottom: 18 }}>
               <div>
                 <label style={labelBase} htmlFor="roi-name">Your name *</label>
@@ -653,7 +950,7 @@ function Specifications() {
 
   return (
     <section id="specifications" style={{ padding: '140px 0', background: 'var(--porcelain)' }}>
-      <div style={{ maxWidth: 980, margin: '0 auto', padding: '0 40px' }}>
+      <div className="wrap" style={{ maxWidth: 980, margin: '0 auto', padding: '0 40px' }}>
         <Eyebrow num="04 / SPEC">Engineering specification</Eyebrow>
         <h2 className="serif" style={{ fontSize: 56, lineHeight: 1.05, letterSpacing:'-0.01em', marginBottom: 56, maxWidth: 760 }}>
           Documented to the watt.<br/>
@@ -686,42 +983,12 @@ function Specifications() {
             }}>
               <div className="mono" style={{
                 fontSize: 10, letterSpacing:'0.15em', color:'var(--warm-500)', marginBottom: 24
-              }}>FIG. 02 · CABINET DIMENSIONS</div>
+              }}>FIG. 02 · THE COMPLETE KIT</div>
 
-              <div style={{ position:'relative', padding: '20px 30px 50px' }}>
-                {/* Cabinet rectangle */}
-                <div style={{
-                  width: '100%', aspectRatio: '142 / 84',
-                  background: 'var(--graphite)', position:'relative',
-                  marginBottom: 12,
-                  display:'flex', alignItems:'center', justifyContent:'center'
-                }}>
-                  <div style={{ width: 24, height: 24, borderRadius: '50%', border:'2px solid var(--porcelain)', opacity:0.4 }}/>
-                  {/* width tick */}
-                  <div style={{
-                    position:'absolute', left:0, right:0, bottom:-26,
-                    display:'flex', justifyContent:'space-between',
-                    fontFamily:'IBM Plex Mono', fontSize:10, color:'var(--warm-500)'
-                  }}>
-                    <span>|</span>
-                    <span>142 mm</span>
-                    <span>|</span>
-                  </div>
-                  {/* height tick */}
-                  <div style={{
-                    position:'absolute', top:0, bottom:0, right:-32,
-                    display:'flex', flexDirection:'column', justifyContent:'space-between',
-                    fontFamily:'IBM Plex Mono', fontSize:10, color:'var(--warm-500)',
-                    alignItems:'center'
-                  }}>
-                    <span>—</span>
-                    <span style={{ writingMode:'vertical-rl' }}>84 mm</span>
-                    <span>—</span>
-                  </div>
-                </div>
-              </div>
+              <img src="assets/photo-product.png" alt="Dr. Fry control cabinet with two electrode panels"
+                style={{ width: '100%', height: 'auto', display: 'block', marginBottom: 24 }} />
 
-              <div className="mono" style={{ fontSize: 10, color:'var(--warm-500)', lineHeight: 1.6, marginTop: 60 }}>
+              <div className="mono" style={{ fontSize: 10, color:'var(--warm-500)', lineHeight: 1.6 }}>
                 Mounts on side wall of fryer cabinet. Panels lower into oil bath via stainless brackets. Single 24V DC tether. Field-replaceable in &lt; 12 minutes.
               </div>
             </div>
@@ -771,7 +1038,7 @@ function Certifications() {
   ];
   return (
     <section id="certifications" style={{ padding:'120px 0', background:'var(--porcelain)', borderTop:'1px solid var(--warm-200)' }}>
-      <div style={{ maxWidth: 980, margin:'0 auto', padding:'0 40px' }}>
+      <div className="wrap" style={{ maxWidth: 980, margin:'0 auto', padding:'0 40px' }}>
         <Eyebrow num="05 / COMPLIANCE">Independently certified · where we ship</Eyebrow>
         <h2 className="serif" style={{ fontSize: 56, lineHeight: 1.05, letterSpacing:'-0.01em', marginBottom: 18, maxWidth: 760 }}>
           Passed in three jurisdictions.
@@ -808,7 +1075,7 @@ function Certifications() {
         <div style={{ marginTop: 22, border:'1px solid var(--warm-200)', borderLeft:'3px solid var(--amber)', background:'var(--porcelain-2)', padding:'24px 28px' }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', flexWrap:'wrap', gap: 12, marginBottom: 16 }}>
             <div style={{ display:'flex', alignItems:'baseline', gap: 12 }}>
-              <span className="serif" style={{ fontSize: 22 }}>CE (EU) &amp; UKCA (UK)</span>
+              <span className="serif" style={{ fontSize: 22 }}>CE (EU)</span>
               <span className="mono" style={{ fontSize: 10, letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--amber-deep)', border:'1px solid var(--amber)', padding:'3px 8px' }}>In progress</span>
             </div>
             <span className="mono" style={{ fontSize: 11, color:'var(--warm-500)', letterSpacing:'0.08em' }}>TARGET Q4 2026</span>
@@ -831,13 +1098,13 @@ function Support() {
       padding: '140px 0 120px',
       background: 'var(--graphite)', color: 'var(--porcelain)'
     }}>
-      <div style={{ maxWidth: 980, margin:'0 auto', padding:'0 40px' }}>
+      <div className="wrap" style={{ maxWidth: 980, margin:'0 auto', padding:'0 40px' }}>
         <div style={{ color: 'var(--warm-500)' }}>
           <Eyebrow num="06 / SUPPORT">European service infrastructure</Eyebrow>
         </div>
         <h2 className="serif" style={{ fontSize: 56, lineHeight: 1.05, letterSpacing:'-0.01em', marginBottom: 56, maxWidth: 760 }}>
           Installed, monitored, guaranteed.<br/>
-          <span style={{ color: 'var(--warm-500)' }}>From Rotterdam, in 11 countries.</span>
+          <span style={{ color: 'var(--warm-500)' }}>From Monster, in 11 countries.</span>
         </h2>
         <div className="ds-grid-4" style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap: 24 }}>
           {[
@@ -858,9 +1125,9 @@ function Support() {
         <div style={{ marginTop: 80 }}>
           {window.JapanStrip && <window.JapanStrip dark={true} />}
         </div>
-        <div style={{
+        <div className="cta-strip" style={{
           marginTop: 0, padding: 40, border: '1px solid #2a2d31',
-          background: '#181a1d', display:'flex', justifyContent:'space-between', alignItems:'center', gap: 40
+          background: '#181a1d', display:'flex', flexWrap:'wrap', justifyContent:'space-between', alignItems:'center', gap: 40
         }}>
           <div>
             <div className="serif" style={{ fontSize: 34, lineHeight: 1.1 }}>Book a measured trial in your kitchen.</div>
@@ -886,7 +1153,7 @@ function Footer() {
       background: 'var(--graphite)', color: 'var(--warm-500)',
       borderTop: '1px solid #23262a',
       fontSize: 12,
-      display:'flex', justifyContent:'space-between', alignItems:'center'
+      display:'flex', flexWrap:'wrap', gap:'18px 24px', justifyContent:'space-between', alignItems:'center'
     }}>
       <div style={{ display:'flex', gap: 16, alignItems:'center' }}>
         <svg width="18" height="18" viewBox="0 0 22 22">
@@ -894,7 +1161,7 @@ function Footer() {
           <circle cx="11" cy="11" r="6" fill="none" stroke="var(--amber)" strokeWidth="0.8"/>
         </svg>
         <span className="serif" style={{ color:'var(--porcelain)', fontSize: 16 }}>Dr. Fry</span>
-        <span className="mono" style={{ fontSize: 10, letterSpacing:'0.15em' }}>PROWAVE™ EU · ROTTERDAM</span>
+        <span className="mono" style={{ fontSize: 10, letterSpacing:'0.15em' }}>PROWAVE™ EU · MONSTER, NL</span>
       </div>
       <div className="mono" style={{ fontSize: 10, letterSpacing:'0.15em' }}>
         © 2026 ENF CORP. JAPAN · UL · RCM/SAA · PSE · CE IN PROGRESS

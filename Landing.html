@@ -6,7 +6,7 @@
 <title>Dr. Fry ProWave™ — Molecular Prevention for Commercial Frying</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Rubik+Spray+Paint&display=swap">
 <style>
   :root {
     --porcelain: #FAFAFA;
@@ -85,19 +85,48 @@
   }
 
   /* ── Responsive: 1440 / 1024 / 768 / 375 ── */
+  .ds-mobile-toggle { display: none; }
+
+  /* Anchored sections clear the fixed nav when jumped to */
+  section[id] { scroll-margin-top: 74px; }
+
   @media (max-width: 900px) {
     .ds-nav-links { display: none !important; }
+    .ds-locale { display: none !important; }
+    .ds-mobile-toggle { display: inline-flex !important; }
     .ds-grid-2 { grid-template-columns: 1fr !important; }
     .ds-grid-3 { grid-template-columns: 1fr 1fr !important; }
     .ds-grid-4 { grid-template-columns: 1fr 1fr !important; }
     .ds-metric-row { grid-template-columns: 1fr !important; gap: 14px !important; }
-    .ds-grid-2 > div { border-right: none !important; }
+    .ds-grid-2 > div { border-right: none !important; border-bottom: 1px solid var(--warm-200); }
+    .ds-evi-grid { grid-template-columns: 1fr !important; gap: 12px !important; }
+    .ds-grid-4-collapse { grid-template-columns: 1fr 1fr !important; gap: 12px !important; }
     section h2.serif { font-size: 40px !important; }
+    /* Reclaim vertical space on tablets — desktop uses 140–160px */
+    section:not(#hero-section):not(#see-it-work) { padding-top: 96px !important; padding-bottom: 96px !important; }
+  }
+  @media (max-width: 620px) {
+    .ds-desktop-cta { display: none !important; }
   }
   @media (max-width: 560px) {
     .ds-grid-3, .ds-grid-4, .ds-grid-4-collapse { grid-template-columns: 1fr !important; }
-    section h2.serif { font-size: 32px !important; }
-    section { padding-left: 4px !important; padding-right: 4px !important; }
+    .ds-grid-3 > div, .ds-grid-4 > div { border-right: none !important; }
+    section h2.serif { font-size: 30px !important; }
+    section { padding-left: 6px !important; padding-right: 6px !important; }
+    section:not(#hero-section):not(#see-it-work) { padding-top: 64px !important; padding-bottom: 64px !important; }
+    .wrap { padding-left: 18px !important; padding-right: 18px !important; }
+    .calc-pane { padding: 22px !important; }
+    .email-pane { padding: 24px 20px !important; }
+    .evi-card { padding: 22px 18px !important; }
+    .schematic-fig { padding: 20px 16px !important; }
+    .cta-strip { padding: 26px 20px !important; }
+    .roi-bignum { font-size: 50px !important; }
+    /* Section intro copy scales down with the headings (skip mono captions) */
+    section p:not(.mono) { font-size: 15.5px !important; }
+  }
+  @media (max-width: 400px) {
+    section h2.serif { font-size: 26px !important; }
+    .roi-bignum { font-size: 42px !important; }
   }
 
   /* Respect reduced-motion: kill keyframe loops + snap transitions */

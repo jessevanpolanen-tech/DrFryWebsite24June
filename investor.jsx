@@ -16,7 +16,7 @@ const ROUND = {
   closeDate: '31 AUG 2026',
 };
 const POOL_TOTAL = ROUND.totalSeats * ROUND.ticket; // €120,000
-const eur = (n) => '€' + Math.round(n).toLocaleString('en-US');
+const eur = (n) => 'TBA';
 
 // ─────────────────────────────────────────────────────────────────
 // Shared bits
@@ -71,7 +71,6 @@ function Nav() {
       <div className="nav-links" style={{ display:'flex', gap: 30, alignItems:'center', fontSize: 13 }}>
         <a href="#how" style={{ color:'var(--slate-800)', textDecoration:'none', fontWeight:500 }}>How it works</a>
         <a href="#allocation" style={{ color:'var(--slate-800)', textDecoration:'none', fontWeight:500 }}>The batch</a>
-        <a href="Dashboard.html" style={{ color:'var(--slate-800)', textDecoration:'none', fontWeight:500 }}>Dashboard</a>
         <a href="index.html" style={{ color:'var(--warm-500)', textDecoration:'none', fontWeight:500 }}>← The product</a>
       </div>
       <a href="#commit" className="ds-btn" style={{

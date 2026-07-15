@@ -195,39 +195,7 @@ function HeroStage({ tweaks }) {
 
       {/* Control unit image removed */}
 
-      {/* Left panel — schematic SVG, rotated 45° around its own Y-axis (back-left) */}
-      <div style={{
-        position: 'absolute',
-        left: leftPanelX, top: panelY,
-        height: panelHeight,
-        pointerEvents: 'none',
-        willChange: 'left, top, height, transform',
-        zIndex: 5,
-        transformStyle: 'preserve-3d',
-        transform: 'perspective(1400px) rotateY(67.5deg)',
-        transformOrigin: 'center center',
-        filter: 'drop-shadow(0 28px 36px rgba(17,19,21,0.18))',
-      }}>
-        <SchematicPanel side="left" height={panelHeight} />
-      </div>
-
-      {/* Right panel — schematic SVG, rotated -45° around its own Y-axis (mirrored) */}
-      <div style={{
-        position: 'absolute',
-        left: rightPanelX, top: panelY,
-        height: panelHeight,
-        pointerEvents: 'none',
-        willChange: 'left, top, height, transform',
-        zIndex: 5,
-        transformStyle: 'preserve-3d',
-        transform: 'perspective(1400px) rotateY(-67.5deg)',
-        transformOrigin: 'center center',
-        filter: 'drop-shadow(0 28px 36px rgba(17,19,21,0.18))',
-      }}>
-        <SchematicPanel side="right" height={panelHeight} />
-      </div>
-
-      {/* Hero copy — fades in as panels open */}
+      {/* Hero copy */}
       <div style={{
         position:'absolute',
         left: '50%', top: '14%',
