@@ -787,7 +787,7 @@ function ROI() {
         </div>
 
         <p className="mono" style={{ fontSize: 11, color:'var(--warm-500)', lineHeight: 1.6, marginTop: 18, maxWidth: 720 }}>
-          ASSUMPTIONS · 36% oil-usage reduction documented at Musashino Corporation (2,158 L → 1,398 L), a Seven-Eleven Japan production facility. Single-facility result; your figures vary by product, line and oil. Figures reflect reduced oil purchasing only; any change in used-oil resale income is operator-specific and excluded. Founding Partner price €4,000 ex VAT (list €5,900 once the founder programme closes), single-fryer install.
+          ASSUMPTIONS · 36% oil-usage reduction documented at Musashino Corporation (2,158 L → 1,398 L), a Seven-Eleven Japan production facility. Single-facility result; your figures vary by product, line and oil. Figures reflect reduced oil purchasing only; any change in used-oil resale income is operator-specific and excluded. Single-fryer install.
         </p>
 
         <RoiEmail onSent={unlock} revealed={unlocked} figures={{ oilCost, oilWeek, days, annual, freshSaved, saved, payback, reductionPct, fiveYear: saved * 5 - UNIT_PRICE }} />
