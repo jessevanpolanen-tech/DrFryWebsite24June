@@ -806,17 +806,20 @@ function RoiEmail({ figures, onSent, revealed }) {
   const [form, setForm] = useState({ name:'', email:'', company:'', message:'' });
   const [errors, setErrors] = useState({});
   const [sent, setSent] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [netErr, setNetErr] = useState('');
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
   const eur = (n) => '€' + Math.round(n).toLocaleString('en-US');
 
 
-  function submit(ev) {
+  async function submit(ev) {
     ev.preventDefault();
     const e = {};
     if (!form.name.trim()) e.name = 1;
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.email)) e.email = 1;
     setErrors(e);
     if (Object.keys(e).length) return;
+    setNetErr(''); setSubmitting(true);
 
     // Save the lead straight to the dashboard book (shared localStorage).
     const lead = {
@@ -840,6 +843,26 @@ function RoiEmail({ figures, onSent, revealed }) {
       raw.push(lead);
       localStorage.setItem(STORE_KEY, JSON.stringify(raw));
     } catch {}
+    // Push the lead to the sequencing backend so the team is actually notified.
+    const payload = JSON.stringify({
+      email: form.email.trim(), name: form.name.trim(), org: form.company.trim(),
+      role: 'ROI lead', note: form.message.trim(), source: 'roi-form',
+    });
+    const opts = { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payload };
+    const post = async (url) => {
+      const r = await fetch(url, opts);
+      if (!r.ok || !(r.headers.get('content-type') || '').includes('json')) throw new Error('HTTP ' + r.status);
+      return r.json();
+    };
+    try {
+      try { await post('/api/capture-lead'); }
+      catch { await post('https://dr-fry-sequencerr.vercel.app/api/capture-lead'); }
+    } catch (err) {
+      setSubmitting(false);
+      setNetErr('Could not reach the Dr. Fry server (' + String(err.message || err) + '). Your details were saved locally but NOT sent to the team — check the backend is deployed and try again.');
+      return;
+    }
+    setSubmitting(false);
     setSent(true);
     if (onSent) onSent();
   }
@@ -915,11 +938,17 @@ function RoiEmail({ figures, onSent, revealed }) {
                 Please add your name and a valid email so we can reply.
               </div>
             )}
-            <button type="submit" className="ds-btn" style={{
+            {netErr && (
+              <div className="mono" style={{ fontSize: 11, color:'var(--amber)', letterSpacing:'0.03em', lineHeight:1.6, marginBottom: 16, border:'1px solid var(--amber)', padding:'12px 14px' }}>
+                ◆ {netErr}
+              </div>
+            )}
+            <button type="submit" disabled={submitting} className="ds-btn" style={{
               width:'100%', background:'var(--amber)', color:'var(--graphite)',
-              padding:'16px', fontSize:14, fontWeight:600, letterSpacing:'0.05em'
+              padding:'16px', fontSize:14, fontWeight:600, letterSpacing:'0.05em',
+              opacity: submitting ? 0.6 : 1, cursor: submitting ? 'wait' : 'pointer'
             }}>
-              SEND MY DETAILS →
+              {submitting ? 'SENDING…' : 'SEND MY DETAILS →'}
             </button>
             <p className="mono" style={{ fontSize: 10, color:'var(--warm-500)', lineHeight:1.6, marginTop: 14, letterSpacing:'0.04em' }}>
               Sends your figures and note straight to the Dr. Fry team — we'll reply by email with a tailored quote.
@@ -1110,7 +1139,6 @@ function Support() {
           {[
             { k: '< 48h', l: 'Site survey', d: 'Booked from request' },
             { k: '< 2h', l: 'Install per fryer', d: 'During off-hours' },
-            { k: '5 yr', l: 'Hardware warranty', d: 'Bumper-to-bumper' },
             { k: '24/7', l: 'Monitoring', d: 'Optional telemetry' },
           ].map((s,i)=>(
             <div key={i} style={{ borderTop: '1px solid var(--warm-500)', paddingTop: 22 }}>
